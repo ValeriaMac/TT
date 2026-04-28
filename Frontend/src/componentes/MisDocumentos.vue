@@ -125,7 +125,10 @@ const cargarLista = async () => {
 const abrirEpub = async (nombre) => {
   try {
     const respuesta = await axios.get(`http://localhost:3000/api/lector/url/${nombre}`)
-    emit('epub-cargado', respuesta.data.url)
+    emit('epub-cargado', {
+      url: respuesta.data.url,
+      nombre: nombre
+    })
   } catch (err) {
     error.value = 'Error al abrir el archivo.'
   }

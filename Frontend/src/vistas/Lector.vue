@@ -1,13 +1,14 @@
 <template>
   <div>
-    <MisDocumentos 
-      v-if="!archivoUrl" 
-      @epub-cargado="manejarEpubCargado" 
+    <MisDocumentos
+      v-if="!archivoUrl"
+      @epub-cargado="manejarEpubCargado"
     />
-    <VistaLector 
-      v-else 
-      :url="archivoUrl" 
-      @regresar="archivoUrl = null" 
+    <VistaLector
+      v-else
+      :url="archivoUrl"
+      :nombreArchivo="nombreArchivo"
+      @regresar="archivoUrl = null"
     />
   </div>
 </template>
@@ -18,8 +19,10 @@ import MisDocumentos from '../componentes/MisDocumentos.vue'
 import VistaLector from '../componentes/VistaLector.vue'
 
 const archivoUrl = ref(null)
+const nombreArchivo = ref('')
 
-const manejarEpubCargado = (url) => {
-  archivoUrl.value = url
+const manejarEpubCargado = (datos) => {
+  archivoUrl.value = datos.url
+  nombreArchivo.value = datos.nombre
 }
 </script>

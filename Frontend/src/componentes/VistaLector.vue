@@ -8,6 +8,7 @@
       <button @click="reproducir" :disabled="leyendo">▶ Reproducir</button>
       <button @click="pausar" :disabled="!leyendo">⏸ Pausar</button>
       <button @click="detener">⏹ Detener</button>
+      <button @click="reiniciar">↺ Reiniciar</button>
       <label style="color: white;">Velocidad:</label>
       <input
         type="range"
@@ -29,12 +30,18 @@
     <p v-if="cargando" style="margin-top: 60px;">Cargando libro...</p>
     <p v-if="errorMsg" style="color: red; margin-top: 60px;">{{ errorMsg }}</p>
 
+    <!-- Indicador de progreso guardado -->
+    <div v-if="!cargando && progresoGuardado" style="margin-top: 60px; padding: 10px; background-color: #2a2a2a; border-radius: 8px; color: #aaa; font-size: 14px;">
+      📖 Continuando desde donde te quedaste...
+    </div>
+
     <!-- Contenido del libro con formato -->
     <div
       v-show="!cargando"
       ref="contenedorLibro"
       id="contenedor-libro"
-      style="margin-top: 60px; max-width: 700px; margin-left: auto; margin-right: auto; line-height: 1.8; font-size: 18px;"
+      :style="progresoGuardado ? 'margin-top: 10px;' : 'margin-top: 60px;'"
+      style="max-width: 700px; margin-left: auto; margin-right: auto; line-height: 1.8; font-size: 18px;"
     ></div>
 
   </div>
@@ -45,7 +52,8 @@ import { ref, onMounted, onUnmounted } from 'vue'
 import Epub from 'epubjs'
 
 const props = defineProps({
-  url: String
+  url: String,
+  nombreArchivo: String
 })
 
 const emit = defineEmits(['regresar'])
@@ -60,9 +68,33 @@ const indicePausa = ref(0)
 const contenedorLibro = ref(null)
 const vozSeleccionada = ref('')
 const vocesDisponibles = ref([])
+const progresoGuardado = ref(false)
 
 let libro = null
 let palabrasDOM = []
+
+const claveProgreso = `progreso-${props.nombreArchivo}`
+
+const guardarProgreso = () => {
+  if (indicePausa.value > 0) {
+    localStorage.setItem(
+      claveProgreso,
+      JSON.stringify({
+        indice: indicePausa.value,
+        fecha: new Date().toISOString()
+      })
+    )
+  }
+}
+
+const cargarProgreso = () => {
+  const guardado = localStorage.getItem(claveProgreso)
+  if (guardado) {
+    const datos = JSON.parse(guardado)
+    return datos.indice
+  }
+  return 0
+}
 
 const agregarEstilos = () => {
   const estilos = document.createElement('style')
@@ -139,6 +171,23 @@ const cargarLibro = async () => {
       })
       envolverPalabras(contenedorLibro.value)
       palabrasDOM = contenedorLibro.value.querySelectorAll('.palabra')
+
+      // Cargar progreso guardado
+      const indiceGuardado = cargarProgreso()
+      if (indiceGuardado > 0) {
+        progresoGuardado.value = true
+        indicePausa.value = indiceGuardado
+
+        // Scroll a la palabra donde se quedó
+        setTimeout(() => {
+          if (palabrasDOM[indiceGuardado]) {
+            palabrasDOM[indiceGuardado].scrollIntoView({
+              behavior: 'smooth',
+              block: 'center'
+            })
+          }
+        }, 500)
+      }
     }
 
     cargando.value = false
@@ -186,7 +235,7 @@ const envolverPalabras = (elemento) => {
 const reproducir = () => {
   if (palabrasDOM.length === 0) return
 
-  if (pausado.value) {
+  if (pausado.value || indicePausa.value > 0) {
     window.speechSynthesis.cancel()
     pausado.value = false
     const palabrasDesde = Array.from(palabrasDOM).slice(indicePausa.value)
@@ -261,19 +310,35 @@ const pausar = () => {
   window.speechSynthesis.pause()
   leyendo.value = false
   pausado.value = true
+  guardarProgreso()
 }
 
 const detener = () => {
   window.speechSynthesis.cancel()
   leyendo.value = false
   pausado.value = false
+  guardarProgreso()
   indicePausa.value = 0
   const resaltada = contenedorLibro.value?.querySelector('.palabra-resaltada')
   if (resaltada) resaltada.classList.remove('palabra-resaltada')
 }
 
+const reiniciar = () => {
+  window.speechSynthesis.cancel()
+  leyendo.value = false
+  pausado.value = false
+  indicePausa.value = 0
+  progresoGuardado.value = false
+  localStorage.removeItem(claveProgreso)
+  const resaltada = contenedorLibro.value?.querySelector('.palabra-resaltada')
+  if (resaltada) resaltada.classList.remove('palabra-resaltada')
+  contenedorLibro.value?.scrollTo({ top: 0, behavior: 'smooth' })
+  window.scrollTo({ top: 0, behavior: 'smooth' })
+}
+
 onUnmounted(() => {
-  detener()
+  guardarProgreso()
+  window.speechSynthesis.cancel()
   const estilos = document.getElementById('estilos-libro')
   if (estilos) estilos.remove()
   if (libro) libro.destroy()
