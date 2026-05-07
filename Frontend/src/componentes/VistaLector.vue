@@ -7,7 +7,7 @@
       <h2 style="margin: 0; font-size: 16px; flex: 1;">{{ titulo }}</h2>
       <button @click="reproducir" :disabled="leyendo">▶ Reproducir</button>
       <button @click="pausar" :disabled="!leyendo">⏸ Pausar</button>
-      <button @click="detener">⏹ Detener</button>
+      <!-- <button @click="detener">⏹ Detener</button> -->
       <button @click="reiniciar">↺ Reiniciar</button>
       <label style="color: white;">Velocidad:</label>
       <input
