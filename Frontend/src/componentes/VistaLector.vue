@@ -85,6 +85,11 @@ const guardarProgreso = () => {
       })
     )
   }
+  // Guardar configuración de voz y velocidad
+  localStorage.setItem('config-lector', JSON.stringify({
+    velocidad: velocidad.value,
+    voz: vozSeleccionada.value
+  }))
 }
 
 const cargarProgreso = () => {
@@ -128,7 +133,19 @@ const agregarEstilos = () => {
 const cargarVoces = () => {
   const voces = window.speechSynthesis.getVoices()
   vocesDisponibles.value = voces.filter(v => v.lang.startsWith('es'))
-  if (vocesDisponibles.value.length > 0 && !vozSeleccionada.value) {
+
+  // Cargar configuración guardada
+  const configGuardada = localStorage.getItem('config-lector')
+  if (configGuardada) {
+    const config = JSON.parse(configGuardada)
+    velocidad.value = config.velocidad || 0.9
+    const vozEncontrada = vocesDisponibles.value.find(v => v.name === config.voz)
+    if (vozEncontrada) {
+      vozSeleccionada.value = vozEncontrada.name
+    } else if (vocesDisponibles.value.length > 0) {
+      vozSeleccionada.value = vocesDisponibles.value[0].name
+    }
+  } else if (vocesDisponibles.value.length > 0 && !vozSeleccionada.value) {
     vozSeleccionada.value = vocesDisponibles.value[0].name
   }
 }
