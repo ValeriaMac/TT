@@ -1,6 +1,7 @@
+// auth.rutas.js
 const express = require('express');
 const router = express.Router();
-const { registrarUsuario, iniciarSesion, obtenerPerfil } = require('../controladores/usuario.controlador');
+const { registrarUsuario, iniciarSesion, obtenerPerfil } = require('../controladores/auth.controlador');
 const verificarToken = require('../middleware/auth.middleware');
 
 router.post('/registro', registrarUsuario);
