@@ -3,6 +3,7 @@ const cors = require('cors');
 require('dotenv').config();
 
 const lectorRutas = require('./rutas/lector.rutas');
+const authRutas = require('./rutas/auth.rutas');   // 👈 se mueve aquí arriba, junto a lectorRutas
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -13,6 +14,7 @@ app.use(express.json());
 
 // Rutas
 app.use('/api/lector', lectorRutas);
+app.use('/api/auth', authRutas);                   // 👈 se mueve aquí, junto a las demás rutas
 
 // Ruta de prueba
 app.get('/', (req, res) => {
