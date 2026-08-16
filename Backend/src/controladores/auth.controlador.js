@@ -1,12 +1,9 @@
+const { createClient } = require('@supabase/supabase-js');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
-const { Pool } = require('pg'); // o tu conexión Sequelize, ajusta según tengas
 
-const pool = new Pool({
-    connectionString: process.env.DATABASE_URL, // la URL de conexión de Supabase
-});
+const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY);
 
-// Calcula si una fecha de nacimiento corresponde a un menor de edad
 function calcularEsMenorEdad(fechaNacimiento) {
     const hoy = new Date();
     const nacimiento = new Date(fechaNacimiento);
@@ -23,7 +20,6 @@ async function registrarUsuario(req, res) {
     try {
         const { nombre, correo, contrasena, fechaNacimiento, correoTutor, avisoPrivacidadAceptado } = req.body;
 
-        // Validaciones básicas (RN_01: contraseña mínimo 8 caracteres, mayúscula, minúscula y número)
         if (!nombre || !correo || !contrasena || !fechaNacimiento) {
             return res.status(400).json({ mensaje: 'Faltan campos obligatorios' });
         }
@@ -43,36 +39,40 @@ async function registrarUsuario(req, res) {
         }
 
         // Verificar que el correo no exista ya
-        const usuarioExistente = await pool.query('SELECT id FROM usuarios WHERE correo = $1', [correo]);
-        if (usuarioExistente.rows.length > 0) {
+        const { data: usuarioExistente } = await supabase
+            .from('usuarios')
+            .select('id')
+            .eq('correo', correo)
+            .maybeSingle();
+
+        if (usuarioExistente) {
             return res.status(409).json({ mensaje: 'Este correo ya tiene una cuenta registrada' });
         }
 
-        // Encriptar contraseña
         const contrasenaHash = await bcrypt.hash(contrasena, 10);
 
-        // Insertar usuario nuevo
-        const resultado = await pool.query(
-            `INSERT INTO usuarios (nombre, correo, contrasena_hash, fecha_nacimiento, correo_tutor, aviso_privacidad_aceptado)
-             VALUES ($1, $2, $3, $4, $5, $6) RETURNING id, nombre, correo, es_menor_edad`,
-            [nombre, correo, contrasenaHash, fechaNacimiento, correoTutor || null, avisoPrivacidadAceptado || false]
-        );
+        // Insertar usuario nuevo (el trigger de la BD calcula es_menor_edad solo)
+        const { data: usuarioNuevo, error: errorInsertar } = await supabase
+            .from('usuarios')
+            .insert({
+                nombre,
+                correo,
+                contrasena_hash: contrasenaHash,
+                fecha_nacimiento: fechaNacimiento,
+                correo_tutor: correoTutor || null,
+                aviso_privacidad_aceptado: avisoPrivacidadAceptado || false,
+            })
+            .select('id, nombre, correo, es_menor_edad')
+            .single();
 
-        const usuarioNuevo = resultado.rows[0];
+        if (errorInsertar) throw errorInsertar;
 
-        // Aplicar configuración visual predeterminada para dislexia (RF_23)
-        await pool.query(
-            `INSERT INTO configuracion_visual (usuario_id) VALUES ($1)`,
-            [usuarioNuevo.id]
-        );
+        // Configuración visual predeterminada (RF_23)
+        await supabase.from('configuracion_visual').insert({ usuario_id: usuarioNuevo.id });
 
-        // Crear su registro de progreso general en ceros
-        await pool.query(
-            `INSERT INTO progreso_general (usuario_id) VALUES ($1)`,
-            [usuarioNuevo.id]
-        );
+        // Progreso general en ceros
+        await supabase.from('progreso_general').insert({ usuario_id: usuarioNuevo.id });
 
-        // Generar token JWT
         const token = jwt.sign({ id: usuarioNuevo.id }, process.env.JWT_SECRET, {
             expiresIn: process.env.JWT_EXPIRA,
         });
@@ -98,16 +98,17 @@ async function iniciarSesion(req, res) {
             return res.status(400).json({ mensaje: 'Correo y contraseña son obligatorios' });
         }
 
-        const resultado = await pool.query('SELECT * FROM usuarios WHERE correo = $1', [correo]);
+        const { data: usuario } = await supabase
+            .from('usuarios')
+            .select('*')
+            .eq('correo', correo)
+            .maybeSingle();
 
-        // Mensaje genérico a propósito, para no revelar si el correo existe o no (CU-SIS-02)
-        if (resultado.rows.length === 0) {
+        if (!usuario) {
             return res.status(401).json({ mensaje: 'Correo o contraseña incorrectos' });
         }
 
-        const usuario = resultado.rows[0];
         const contrasenaValida = await bcrypt.compare(contrasena, usuario.contrasena_hash);
-
         if (!contrasenaValida) {
             return res.status(401).json({ mensaje: 'Correo o contraseña incorrectos' });
         }
@@ -119,11 +120,7 @@ async function iniciarSesion(req, res) {
         res.json({
             mensaje: 'Sesión iniciada correctamente',
             token,
-            usuario: {
-                id: usuario.id,
-                nombre: usuario.nombre,
-                correo: usuario.correo,
-            },
+            usuario: { id: usuario.id, nombre: usuario.nombre, correo: usuario.correo },
         });
 
     } catch (error) {
@@ -132,22 +129,20 @@ async function iniciarSesion(req, res) {
     }
 }
 
-// GET /api/auth/perfil (ruta protegida, usa el middleware)
+// GET /api/auth/perfil (protegida)
 async function obtenerPerfil(req, res) {
     try {
-        const resultado = await pool.query(
-            `SELECT u.id, u.nombre, u.correo, u.fecha_registro, cv.*
-             FROM usuarios u
-             LEFT JOIN configuracion_visual cv ON cv.usuario_id = u.id
-             WHERE u.id = $1`,
-            [req.usuarioId]
-        );
+        const { data, error } = await supabase
+            .from('usuarios')
+            .select('id, nombre, correo, fecha_registro, configuracion_visual(*)')
+            .eq('id', req.usuarioId)
+            .single();
 
-        if (resultado.rows.length === 0) {
+        if (error || !data) {
             return res.status(404).json({ mensaje: 'Usuario no encontrado' });
         }
 
-        res.json(resultado.rows[0]);
+        res.json(data);
 
     } catch (error) {
         console.error('Error al obtener perfil:', error);
