@@ -2,7 +2,7 @@ const { createClient } = require('@supabase/supabase-js');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 
-const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY);
+const supabase = require('../config/supabase.cliente');
 
 function calcularEsMenorEdad(fechaNacimiento) {
     const hoy = new Date();
