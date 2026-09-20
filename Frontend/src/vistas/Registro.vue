@@ -1,41 +1,44 @@
 <template>
-  <div class="contenedor-auth">
-    <h1>Crear cuenta</h1>
+  <div class="pagina-auth">
+    <div class="contenedor-auth">
+      <h1 class="logo">lex</h1>
+      <h2>Crear cuenta</h2>
 
-    <form @submit.prevent="manejarRegistro">
-      <label for="nombre">Nombre</label>
-      <input id="nombre" v-model="formulario.nombre" type="text" required />
+      <form @submit.prevent="manejarRegistro">
+        <label for="nombre">Nombre completo</label>
+        <input id="nombre" v-model="formulario.nombre" type="text" required />
 
-      <label for="correo">Correo electrónico</label>
-      <input id="correo" v-model="formulario.correo" type="email" required />
+        <label for="correo">Correo electrónico</label>
+        <input id="correo" v-model="formulario.correo" type="email" placeholder="x@correo.com" required />
 
-      <label for="contrasena">Contraseña</label>
-      <input id="contrasena" v-model="formulario.contrasena" type="password" required />
-      <small>Mínimo 8 caracteres, con mayúscula, minúscula y número</small>
+        <label for="contrasena">Contraseña</label>
+        <input id="contrasena" v-model="formulario.contrasena" type="password" required />
+        <small>Mínimo 8 caracteres, con mayúscula, minúscula y número</small>
 
-      <label for="fechaNacimiento">Fecha de nacimiento</label>
-      <input id="fechaNacimiento" v-model="formulario.fechaNacimiento" type="date" required />
+        <label for="fechaNacimiento">Fecha de nacimiento</label>
+        <input id="fechaNacimiento" v-model="formulario.fechaNacimiento" type="date" required />
 
-      <!-- Solo aparece si detectamos que es menor de edad -->
-      <div v-if="esMenorDeEdad">
-        <label for="correoTutor">Correo de tu tutor</label>
-        <input id="correoTutor" v-model="formulario.correoTutor" type="email" required />
-        <small>Como eres menor de edad, necesitamos el correo de un padre/tutor</small>
-      </div>
+        <!-- Solo aparece si detectamos que es menor de edad -->
+        <div v-if="esMenorDeEdad">
+          <label for="correoTutor">Correo de tu tutor</label>
+          <input id="correoTutor" v-model="formulario.correoTutor" type="email" required />
+          <small>Como eres menor de edad, necesitamos el correo de un padre/tutor</small>
+        </div>
 
-      <label class="checkbox">
-        <input type="checkbox" v-model="formulario.avisoPrivacidadAceptado" required />
-        Acepto el aviso de privacidad
-      </label>
+        <label class="checkbox">
+          <input type="checkbox" v-model="formulario.avisoPrivacidadAceptado" required />
+          Acepto el aviso de privacidad
+        </label>
 
-      <p v-if="mensajeError" class="error">{{ mensajeError }}</p>
+        <p v-if="mensajeError" class="error">{{ mensajeError }}</p>
 
-      <button type="submit" :disabled="cargando">
-        {{ cargando ? 'Creando cuenta...' : 'Registrarse' }}
-      </button>
-    </form>
+        <button type="submit" :disabled="cargando">
+          {{ cargando ? 'Creando cuenta...' : 'Crear cuenta' }}
+        </button>
+      </form>
 
-    <router-link to="/login">¿Ya tienes cuenta? Inicia sesión</router-link>
+      <router-link to="/login">¿Ya tienes una cuenta? Inicia sesión</router-link>
+    </div>
   </div>
 </template>
 
@@ -75,7 +78,7 @@ async function manejarRegistro() {
   cargando.value = true;
   try {
     await authStore.registrar(formulario);
-    router.push('/'); // redirige al menú principal tras registrarse
+    router.push('/inicio'); // redirige al dashboard tras registrarse
   } catch (error) {
     mensajeError.value = error.response?.data?.mensaje || 'Ocurrió un error al registrarte';
   } finally {
@@ -84,30 +87,48 @@ async function manejarRegistro() {
 }
 </script>
 
-
 <style scoped>
-.contenedor-auth {
-  max-width: 420px;
-  margin: 3rem auto;
-  padding: 2rem;
-  font-family: system-ui, sans-serif;
+.pagina-auth {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 85vh;
+  padding: 1rem;
 }
 
-.contenedor-auth h1 {
+.contenedor-auth {
+  background: var(--color-tarjeta);
+  border: 1px solid var(--color-borde);
+  border-radius: var(--radio-tarjeta);
+  max-width: 420px;
+  width: 100%;
+  padding: 2rem;
+  text-align: center;
+}
+
+.contenedor-auth .logo {
+  color: var(--color-primario);
+  font-size: 2rem;
+  margin-bottom: 0.3rem;
+}
+
+.contenedor-auth h2 {
   margin-bottom: 1.5rem;
-  font-size: 1.75rem;
+  font-size: 1.3rem;
 }
 
 .contenedor-auth form {
   display: flex;
   flex-direction: column;
   gap: 1rem;
+  text-align: left;
 }
 
 .contenedor-auth label {
   font-weight: 600;
   margin-bottom: 0.25rem;
   display: block;
+  font-size: 0.9rem;
 }
 
 .contenedor-auth input[type="text"],
@@ -117,18 +138,18 @@ async function manejarRegistro() {
   width: 100%;
   padding: 0.65rem;
   font-size: 1rem;
-  border: 2px solid #ccc;
+  border: 1px solid var(--color-borde);
   border-radius: 8px;
   box-sizing: border-box;
 }
 
 .contenedor-auth input:focus {
-  outline: 3px solid #4a90d9;
-  border-color: #4a90d9;
+  outline: 2px solid var(--color-primario);
+  border-color: var(--color-primario);
 }
 
 .contenedor-auth small {
-  color: #666;
+  color: var(--color-texto-secundario);
   font-size: 0.85rem;
 }
 
@@ -143,16 +164,16 @@ async function manejarRegistro() {
   padding: 0.75rem;
   font-size: 1rem;
   font-weight: 600;
-  background-color: #4a90d9;
+  background-color: var(--color-primario);
   color: white;
   border: none;
-  border-radius: 8px;
+  border-radius: var(--radio-boton);
   cursor: pointer;
   margin-top: 0.5rem;
 }
 
 .contenedor-auth button:hover:not(:disabled) {
-  background-color: #3a7bc0;
+  background-color: var(--color-primario-hover);
 }
 
 .contenedor-auth button:disabled {
@@ -168,10 +189,12 @@ async function manejarRegistro() {
   font-size: 0.9rem;
 }
 
-.contenedor-auth a {
+.contenedor-auth > a {
   display: block;
-  margin-top: 1rem;
+  margin-top: 1.2rem;
   text-align: center;
-  color: #4a90d9;
+  color: var(--color-texto-secundario);
+  font-size: 0.9rem;
+  text-decoration: none;
 }
 </style>

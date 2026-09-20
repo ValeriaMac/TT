@@ -1,19 +1,27 @@
 import { createRouter, createWebHistory } from 'vue-router';
 import { useAuthStore } from '../store/auth.store';
 
+import Landing from '../vistas/Landing.vue';                  // 👈 NUEVO — página pública
 import Login from '../vistas/Login.vue';
 import Registro from '../vistas/Registro.vue';
+import RecuperarContrasena from '../vistas/RecuperarContrasena.vue'; // 👈 NUEVO
+import Inicio from '../vistas/Inicio.vue';                    // 👈 NUEVO — dashboard
 import Lector from '../vistas/Lector.vue';
 import ConfiguracionVisual from '../vistas/ConfiguracionVisual.vue';
 import Escritura from '../vistas/Escritura.vue';
-
+import MisDocumentos from '../componentes/MisDocumentos.vue';
 
 const rutas = [
+    {
+        path: '/',
+        name: 'landing',
+        component: Landing, // página pública, sin meta: la ve cualquiera
+    },
     {
         path: '/login',
         name: 'login',
         component: Login,
-        meta: { requiereInvitado: true }, // solo accesible si NO tienes sesión
+        meta: { requiereInvitado: true },
     },
     {
         path: '/registro',
@@ -22,10 +30,28 @@ const rutas = [
         meta: { requiereInvitado: true },
     },
     {
-        path: '/',
+        path: '/recuperar',
+        name: 'recuperar',
+        component: RecuperarContrasena,
+        meta: { requiereInvitado: true },
+    },
+    {
+        path: '/inicio',
         name: 'inicio',
-        component: Lector, // por ahora la pantalla principal es el lector, luego agregamos un menú
-        meta: { requiereAutenticacion: true }, // solo accesible si SÍ tienes sesión
+        component: Inicio,
+        meta: { requiereAutenticacion: true },
+    },
+    {
+        path: '/lectura',
+        name: 'lectura',
+        component: Lector,
+        meta: { requiereAutenticacion: true },
+    },
+    {
+        path: '/documentos',
+        name: 'documentos',
+        component: MisDocumentos,
+        meta: { requiereAutenticacion: true },
     },
     {
         path: '/configuracion',
@@ -33,13 +59,12 @@ const rutas = [
         component: ConfiguracionVisual,
         meta: { requiereAutenticacion: true },
     },
-
     {
         path: '/escritura',
         name: 'escritura',
         component: Escritura,
         meta: { requiereAutenticacion: true },
-    }
+    },
 ];
 
 const router = createRouter({
@@ -47,18 +72,18 @@ const router = createRouter({
     routes: rutas,
 });
 
-// Guardia de navegación: revisa antes de entrar a cada ruta
 router.beforeEach((rutaDestino, rutaOrigen, next) => {
     const authStore = useAuthStore();
 
     if (rutaDestino.meta.requiereAutenticacion && !authStore.estaAutenticado) {
-        // Quiere entrar a una ruta protegida sin sesión → lo manda a login
         next('/login');
     } else if (rutaDestino.meta.requiereInvitado && authStore.estaAutenticado) {
-        // Ya tiene sesión pero intenta ver login/registro → lo manda al inicio
-        next('/');
+        next('/inicio');
+    } else if (rutaDestino.name === 'landing' && authStore.estaAutenticado) {
+        // Si ya inició sesión y entra a "/", lo mandamos directo al dashboard
+        next('/inicio');
     } else {
-        next(); // todo bien, lo deja pasar
+        next();
     }
 });
 

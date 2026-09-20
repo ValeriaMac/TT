@@ -4,11 +4,11 @@
       <span class="logo-app">lex</span>
 
       <div class="enlaces-nav">
-        <router-link to="/" class="enlace-nav">
+        <router-link to="/inicio" class="enlace-nav">
           <IconoInicio /> Inicio
         </router-link>
 
-        <router-link to="/" class="enlace-nav">
+        <router-link to="/lectura" class="enlace-nav">
           <IconoLectura /> Lectura
         </router-link>
 
@@ -19,7 +19,7 @@
         <span class="enlace-nav deshabilitado" title="Próximamente">
           <IconoEjercicios /> Ejercicios
         </span>
-        <router-link to="/" class="enlace-nav">
+        <router-link to="/documentos" class="enlace-nav">
           <IconoDocumentos /> Documentos
         </router-link>
         <span class="enlace-nav deshabilitado" title="Próximamente">
