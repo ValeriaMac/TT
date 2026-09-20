@@ -7,7 +7,6 @@
       <h2 style="margin: 0; font-size: 16px; flex: 1;">{{ titulo }}</h2>
       <button @click="reproducir" :disabled="leyendo">▶ Reproducir</button>
       <button @click="pausar" :disabled="!leyendo">⏸ Pausar</button>
-      <!-- <button @click="detener">⏹ Detener</button> -->
       <button @click="reiniciar">↺ Reiniciar</button>
       <label style="color: white;">Velocidad:</label>
       <input
@@ -30,7 +29,6 @@
     <p v-if="cargando" style="margin-top: 60px;">Cargando libro...</p>
     <p v-if="errorMsg" style="color: red; margin-top: 60px;">{{ errorMsg }}</p>
 
-    <!-- Indicador de progreso guardado -->
     <div v-if="!cargando && progresoGuardado" style="margin-top: 60px; padding: 10px; background-color: #2a2a2a; border-radius: 8px; color: #aaa; font-size: 14px;">
       📖 Continuando desde donde te quedaste...
     </div>
@@ -41,7 +39,7 @@
       ref="contenedorLibro"
       id="contenedor-libro"
       :style="progresoGuardado ? 'margin-top: 10px;' : 'margin-top: 60px;'"
-      style="max-width: 700px; margin-left: auto; margin-right: auto; line-height: 1.8; font-size: 18px;"
+      style="max-width: 700px; margin-left: auto; margin-right: auto; line-height: 1.8;"
     ></div>
 
   </div>
@@ -50,6 +48,8 @@
 <script setup>
 import { ref, onMounted, onUnmounted } from 'vue'
 import Epub from 'epubjs'
+import { useConfiguracionStore } from '../store/configuracion.store'
+import { useEstilosPersonalizacion } from '../composables/useEstilosPersonalizacion'
 
 const props = defineProps({
   url: String,
@@ -75,6 +75,10 @@ let palabrasDOM = []
 
 const claveProgreso = `progreso-${props.nombreArchivo}`
 
+// ===== Personalización visual (RF_05-RF_08) =====
+const configuracionStore = useConfiguracionStore()
+const { estilosPersonalizacion } = useEstilosPersonalizacion()
+
 const guardarProgreso = () => {
   if (indicePausa.value > 0) {
     localStorage.setItem(
@@ -85,7 +89,6 @@ const guardarProgreso = () => {
       })
     )
   }
-  // Guardar configuración de voz y velocidad
   localStorage.setItem('config-lector', JSON.stringify({
     velocidad: velocidad.value,
     voz: vozSeleccionada.value
@@ -102,25 +105,35 @@ const cargarProgreso = () => {
 }
 
 const agregarEstilos = () => {
+  const est = estilosPersonalizacion.value
+
   const estilos = document.createElement('style')
   estilos.id = 'estilos-libro'
   estilos.textContent = `
-    #contenedor-libro { color: white; }
+    #contenedor-libro {
+      color: ${est.color} !important;
+      background-color: ${est.backgroundColor} !important;
+      font-family: ${est.fontFamily} !important;
+      font-size: ${est.fontSize} !important;
+      letter-spacing: ${est.letterSpacing} !important;
+      padding: 1.5rem;
+      border-radius: 12px;
+    }
     #contenedor-libro h1, #contenedor-libro h2,
     #contenedor-libro h3, #contenedor-libro h4 {
-      color: white; margin-top: 24px; margin-bottom: 12px;
+      color: ${est.color} !important; margin-top: 24px; margin-bottom: 12px;
     }
     #contenedor-libro p {
-      color: white; margin-bottom: 14px; text-align: justify;
+      color: ${est.color} !important; margin-bottom: 14px; text-align: justify;
     }
-    #contenedor-libro span { color: white; }
+    #contenedor-libro span { color: ${est.color} !important; }
     #contenedor-libro img {
       max-width: 100%; height: auto;
       display: block; margin: 10px auto;
     }
-    #contenedor-libro hr { border-color: #444; margin: 30px 0; }
-    #contenedor-libro em, #contenedor-libro i { color: white; }
-    #contenedor-libro strong, #contenedor-libro b { color: white; }
+    #contenedor-libro hr { border-color: #ccc; margin: 30px 0; }
+    #contenedor-libro em, #contenedor-libro i { color: ${est.color} !important; }
+    #contenedor-libro strong, #contenedor-libro b { color: ${est.color} !important; }
     .palabra-resaltada {
       background-color: yellow !important;
       color: black !important;
@@ -134,7 +147,6 @@ const cargarVoces = () => {
   const voces = window.speechSynthesis.getVoices()
   vocesDisponibles.value = voces.filter(v => v.lang.startsWith('es'))
 
-  // Cargar configuración guardada
   const configGuardada = localStorage.getItem('config-lector')
   if (configGuardada) {
     const config = JSON.parse(configGuardada)
@@ -148,6 +160,36 @@ const cargarVoces = () => {
   } else if (vocesDisponibles.value.length > 0 && !vozSeleccionada.value) {
     vozSeleccionada.value = vocesDisponibles.value[0].name
   }
+}
+
+// Recorre cada palabra ya envuelta por envolverPalabras() y, dentro de ella,
+// pinta con su color asignado las letras/números que el usuario marcó
+// en Configuración Visual (tabla configuracion_visual.letras_resaltadas).
+const resaltarCaracteresConfigurados = (contenedor, mapaColores) => {
+  if (!mapaColores || Object.keys(mapaColores).length === 0) return
+
+  const palabras = contenedor.querySelectorAll('.palabra')
+
+  palabras.forEach((elementoPalabra) => {
+    const textoOriginal = elementoPalabra.textContent
+    let huboCoincidencia = false
+
+    const htmlNuevo = textoOriginal
+      .split('')
+      .map((caracter) => {
+        const color = mapaColores[caracter.toLowerCase()]
+        if (color) {
+          huboCoincidencia = true
+          return `<span style="color:${color} !important; font-weight:600;">${caracter}</span>`
+        }
+        return caracter
+      })
+      .join('')
+
+    if (huboCoincidencia) {
+      elementoPalabra.innerHTML = htmlNuevo
+    }
+  })
 }
 
 const cargarLibro = async () => {
@@ -182,20 +224,25 @@ const cargarLibro = async () => {
 
     if (contenedorLibro.value) {
       contenedorLibro.value.innerHTML = htmlCompleto
+
+      const est = estilosPersonalizacion.value
       Array.from(contenedorLibro.value.querySelectorAll('*')).forEach(el => {
-        el.style.color = 'white'
+        el.style.color = est.color
         el.style.backgroundColor = 'transparent'
+        el.style.fontFamily = est.fontFamily
+        el.style.letterSpacing = est.letterSpacing
       })
+
       envolverPalabras(contenedorLibro.value)
       palabrasDOM = contenedorLibro.value.querySelectorAll('.palabra')
 
-      // Cargar progreso guardado
+      resaltarCaracteresConfigurados(contenedorLibro.value, configuracionStore.config?.letras_resaltadas)
+
       const indiceGuardado = cargarProgreso()
       if (indiceGuardado > 0) {
         progresoGuardado.value = true
         indicePausa.value = indiceGuardado
 
-        // Scroll a la palabra donde se quedó
         setTimeout(() => {
           if (palabrasDOM[indiceGuardado]) {
             palabrasDOM[indiceGuardado].scrollIntoView({
@@ -216,9 +263,13 @@ const cargarLibro = async () => {
   }
 }
 
-onMounted(() => {
+onMounted(async () => {
+  if (!configuracionStore.config) {
+    await configuracionStore.cargarConfiguracion()
+  }
+
   agregarEstilos()
-  cargarLibro()
+  await cargarLibro()
   cargarVoces()
   window.speechSynthesis.onvoiceschanged = cargarVoces
 })

@@ -1,6 +1,5 @@
 const supabase = require('../config/supabase.cliente');
 
-// GET /api/configuracion — obtiene la configuración visual ACTIVA del usuario logueado
 async function obtenerConfiguracion(req, res) {
     try {
         const { data, error } = await supabase
@@ -10,7 +9,6 @@ async function obtenerConfiguracion(req, res) {
             .single();
 
         if (error) throw error;
-
         res.json(data);
     } catch (error) {
         console.error('Error al obtener configuración:', error);
@@ -18,12 +16,14 @@ async function obtenerConfiguracion(req, res) {
     }
 }
 
-// PUT /api/configuracion — actualiza la configuración visual ACTIVA (CU-SIS-05)
 async function actualizarConfiguracion(req, res) {
     try {
-        const { tipografia, tamanoFuente, colorFondo, colorTexto, espaciado, resaltadoLetrasConfusas } = req.body;
+        const {
+            tipografia, tamanoFuente, colorFondo, colorTexto,
+            espaciadoLetras, espaciadoPalabras, espaciadoLineas,
+            resaltadoLetrasConfusas, letrasResaltadas,
+        } = req.body;
 
-        // RNF_12: tamaño de fuente entre 12 y 24
         if (tamanoFuente && (tamanoFuente < 12 || tamanoFuente > 24)) {
             return res.status(400).json({ mensaje: 'El tamaño de fuente debe estar entre 12 y 24' });
         }
@@ -35,8 +35,11 @@ async function actualizarConfiguracion(req, res) {
                 tamano_fuente: tamanoFuente,
                 color_fondo: colorFondo,
                 color_texto: colorTexto,
-                espaciado,
+                espaciado_letras: espaciadoLetras,
+                espaciado_palabras: espaciadoPalabras,
+                espaciado_lineas: espaciadoLineas,
                 resaltado_letras_confusas: resaltadoLetrasConfusas,
+                letras_resaltadas: letrasResaltadas || {},
                 fecha_actualizacion: new Date().toISOString(),
             })
             .eq('usuario_id', req.usuarioId)
@@ -44,7 +47,6 @@ async function actualizarConfiguracion(req, res) {
             .single();
 
         if (error) throw error;
-
         res.json({ mensaje: 'Configuración guardada', configuracion: data });
     } catch (error) {
         console.error('Error al actualizar configuración:', error);
@@ -52,7 +54,6 @@ async function actualizarConfiguracion(req, res) {
     }
 }
 
-// GET /api/configuracion/plantillas — lista las plantillas guardadas (CU-SIS-07)
 async function listarPlantillas(req, res) {
     try {
         const { data, error } = await supabase
@@ -62,7 +63,6 @@ async function listarPlantillas(req, res) {
             .order('fecha_creacion', { ascending: false });
 
         if (error) throw error;
-
         res.json(data);
     } catch (error) {
         console.error('Error al listar plantillas:', error);
@@ -70,7 +70,6 @@ async function listarPlantillas(req, res) {
     }
 }
 
-// POST /api/configuracion/plantillas — guarda la config actual como plantilla nueva (CU-SIS-06, RN_04)
 async function guardarPlantilla(req, res) {
     try {
         const { nombre } = req.body;
@@ -79,7 +78,6 @@ async function guardarPlantilla(req, res) {
             return res.status(400).json({ mensaje: 'El nombre de la plantilla es obligatorio' });
         }
 
-        // Trae la configuración activa para copiarla como plantilla
         const { data: configActiva, error: errorConfig } = await supabase
             .from('configuracion_visual')
             .select('*')
@@ -97,14 +95,16 @@ async function guardarPlantilla(req, res) {
                 tamano_fuente: configActiva.tamano_fuente,
                 color_fondo: configActiva.color_fondo,
                 color_texto: configActiva.color_texto,
-                espaciado: configActiva.espaciado,
+                espaciado_letras: configActiva.espaciado_letras,
+                espaciado_palabras: configActiva.espaciado_palabras,
+                espaciado_lineas: configActiva.espaciado_lineas,
                 resaltado_letras_confusas: configActiva.resaltado_letras_confusas,
+                letras_resaltadas: configActiva.letras_resaltadas,
             })
             .select()
             .single();
 
         if (error) {
-            // El trigger de la BD avisa cuando ya hay 3 plantillas (RN_04)
             if (error.message.includes('Límite de 3 plantillas')) {
                 return res.status(409).json({ mensaje: 'Ya tienes el máximo de 3 plantillas guardadas' });
             }
@@ -118,7 +118,6 @@ async function guardarPlantilla(req, res) {
     }
 }
 
-// POST /api/configuracion/plantillas/:id/aplicar — aplica una plantilla como config activa
 async function aplicarPlantilla(req, res) {
     try {
         const { id } = req.params;
@@ -127,7 +126,7 @@ async function aplicarPlantilla(req, res) {
             .from('plantillas')
             .select('*')
             .eq('id', id)
-            .eq('usuario_id', req.usuarioId) // seguridad: solo puede aplicar SUS plantillas
+            .eq('usuario_id', req.usuarioId)
             .single();
 
         if (errorPlantilla || !plantilla) {
@@ -141,8 +140,11 @@ async function aplicarPlantilla(req, res) {
                 tamano_fuente: plantilla.tamano_fuente,
                 color_fondo: plantilla.color_fondo,
                 color_texto: plantilla.color_texto,
-                espaciado: plantilla.espaciado,
+                espaciado_letras: plantilla.espaciado_letras,
+                espaciado_palabras: plantilla.espaciado_palabras,
+                espaciado_lineas: plantilla.espaciado_lineas,
                 resaltado_letras_confusas: plantilla.resaltado_letras_confusas,
+                letras_resaltadas: plantilla.letras_resaltadas,
                 fecha_actualizacion: new Date().toISOString(),
             })
             .eq('usuario_id', req.usuarioId)
@@ -150,7 +152,6 @@ async function aplicarPlantilla(req, res) {
             .single();
 
         if (error) throw error;
-
         res.json({ mensaje: 'Plantilla aplicada', configuracion: data });
     } catch (error) {
         console.error('Error al aplicar plantilla:', error);
@@ -158,11 +159,9 @@ async function aplicarPlantilla(req, res) {
     }
 }
 
-// DELETE /api/configuracion/plantillas/:id
 async function eliminarPlantilla(req, res) {
     try {
         const { id } = req.params;
-
         const { error } = await supabase
             .from('plantillas')
             .delete()
@@ -170,7 +169,6 @@ async function eliminarPlantilla(req, res) {
             .eq('usuario_id', req.usuarioId);
 
         if (error) throw error;
-
         res.json({ mensaje: 'Plantilla eliminada' });
     } catch (error) {
         console.error('Error al eliminar plantilla:', error);

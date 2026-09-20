@@ -4,6 +4,7 @@ import { useAuthStore } from '../store/auth.store';
 import Login from '../vistas/Login.vue';
 import Registro from '../vistas/Registro.vue';
 import Lector from '../vistas/Lector.vue';
+import ConfiguracionVisual from '../vistas/ConfiguracionVisual.vue';
 
 const rutas = [
     {
@@ -24,6 +25,12 @@ const rutas = [
         component: Lector, // por ahora la pantalla principal es el lector, luego agregamos un menú
         meta: { requiereAutenticacion: true }, // solo accesible si SÍ tienes sesión
     },
+    {
+        path: '/configuracion',
+        name: 'configuracion',
+        component: ConfiguracionVisual,
+        meta: { requiereAutenticacion: true },
+    }
 ];
 
 const router = createRouter({
