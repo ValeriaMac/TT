@@ -5,6 +5,8 @@ import Login from '../vistas/Login.vue';
 import Registro from '../vistas/Registro.vue';
 import Lector from '../vistas/Lector.vue';
 import ConfiguracionVisual from '../vistas/ConfiguracionVisual.vue';
+import Escritura from '../vistas/Escritura.vue';
+
 
 const rutas = [
     {
@@ -29,6 +31,13 @@ const rutas = [
         path: '/configuracion',
         name: 'configuracion',
         component: ConfiguracionVisual,
+        meta: { requiereAutenticacion: true },
+    },
+
+    {
+        path: '/escritura',
+        name: 'escritura',
+        component: Escritura,
         meta: { requiereAutenticacion: true },
     }
 ];

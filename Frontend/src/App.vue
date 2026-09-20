@@ -7,12 +7,15 @@
         <router-link to="/" class="enlace-nav">
           <IconoInicio /> Inicio
         </router-link>
+
         <router-link to="/" class="enlace-nav">
           <IconoLectura /> Lectura
         </router-link>
-        <span class="enlace-nav deshabilitado" title="Próximamente">
+
+        <router-link to="/escritura" class="enlace-nav">
           <IconoEscritura /> Escritura
-        </span>
+        </router-link>
+        
         <span class="enlace-nav deshabilitado" title="Próximamente">
           <IconoEjercicios /> Ejercicios
         </span>

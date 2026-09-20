@@ -5,6 +5,7 @@ require('dotenv').config();
 const lectorRutas = require('./rutas/lector.rutas');
 const authRutas = require('./rutas/auth.rutas');   
 const configuracionRutas = require('./rutas/configuracion.rutas');
+const escrituraRutas = require('./rutas/escritura.rutas');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -17,6 +18,7 @@ app.use(express.json());
 app.use('/api/lector', lectorRutas);
 app.use('/api/auth', authRutas);  
 app.use('/api/configuracion', configuracionRutas);
+app.use('/api/escritura', escrituraRutas); 
                 
 // Ruta de prueba
 app.get('/', (req, res) => {
@@ -26,3 +28,4 @@ app.get('/', (req, res) => {
 app.listen(PORT, () => {
     console.log(`Servidor corriendo en el puerto ${PORT}`);
 });
+
