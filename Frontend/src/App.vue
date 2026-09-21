@@ -19,10 +19,10 @@
           Escritura
         </router-link>
 
-        <span class="enlace-nav deshabilitado" title="Próximamente">
+        <router-link to="/ejercicios" class="enlace-nav">
           <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="11" rx="5.5"/><path d="M7 11v4M5 13h4"/><circle cx="16" cy="12" r="1"/><circle cx="19" cy="14" r="1"/></svg>
           Ejercicios
-        </span>
+        </router-link>
         <router-link to="/documentos" class="enlace-nav">
           <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
           Documentos

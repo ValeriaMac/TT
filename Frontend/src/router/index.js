@@ -11,7 +11,9 @@ import ConfiguracionVisual from '../vistas/ConfiguracionVisual.vue';
 import Escritura from '../vistas/Escritura.vue';
 import MisDocumentos from '../componentes/MisDocumentos.vue';
 import Perfil from '../vistas/Perfil.vue';       // 👈 NUEVO
-import Progreso from '../vistas/Progreso.vue';   // 👈 NUEVO
+import Progreso from '../vistas/Progreso.vue';
+import Ejercicios from '../vistas/Ejercicios.vue';       // 👈 NUEVO
+import AtrapaElError from '../vistas/AtrapaElError.vue'; // 👈 NUEVO
 
 const rutas = [
     {
@@ -77,6 +79,18 @@ const rutas = [
         path: '/progreso',
         name: 'progreso',
         component: Progreso,
+        meta: { requiereAutenticacion: true },
+    },
+    {
+        path: '/ejercicios',
+        name: 'ejercicios',
+        component: Ejercicios,
+        meta: { requiereAutenticacion: true },
+    },
+    {
+        path: '/ejercicios/atrapa-error',
+        name: 'atrapa-error',
+        component: AtrapaElError,
         meta: { requiereAutenticacion: true },
     },
 ];

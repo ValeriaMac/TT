@@ -7,6 +7,7 @@ const authRutas = require('./rutas/auth.rutas');
 const configuracionRutas = require('./rutas/configuracion.rutas');
 const escrituraRutas = require('./rutas/escritura.rutas');
 const progresoRutas = require('./rutas/progreso.rutas');
+const ejerciciosRutas = require('./rutas/ejercicios.rutas');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -21,6 +22,7 @@ app.use('/api/auth', authRutas);
 app.use('/api/configuracion', configuracionRutas);
 app.use('/api/escritura', escrituraRutas); 
 app.use('/api/progreso', progresoRutas);
+app.use('/api/ejercicios', ejerciciosRutas);
                 
 // Ruta de prueba
 app.get('/', (req, res) => {
