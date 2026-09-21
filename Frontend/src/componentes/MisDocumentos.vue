@@ -1,16 +1,17 @@
 <template>
-  <div style="padding: 20px;">
-
-    <!-- Encabezado -->
-    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-      <h1>Mis documentos</h1>
-      <div style="display: flex; gap: 10px;">
-        <button @click="inputArchivo.click()">↑ Subir EPUB</button>
-        <button disabled>✎ Crear nuevo</button>
+  <div class="pagina-documentos">
+    <div class="encabezado-documentos">
+      <h1>Documentos</h1>
+      <div class="botones-encabezado">
+        <button class="btn-secundario" @click="inputArchivo.click()">
+          ⬆ Subir EPUB
+        </button>
+        <button class="btn-secundario" @click="router.push('/escritura')">
+          ✎ Crear nuevo
+        </button>
       </div>
     </div>
 
-    <!-- Input oculto -->
     <input
       type="file"
       accept=".epub"
@@ -19,53 +20,59 @@
       @change="seleccionarArchivo"
     />
 
-    <p v-if="cargando">Subiendo archivo...</p>
-    <p v-if="error" style="color: red;">{{ error }}</p>
+    <p v-if="cargando" class="mensaje-info">Subiendo archivo...</p>
+    <p v-if="error" class="mensaje-error">{{ error }}</p>
 
     <!-- Lista de documentos -->
-    <div v-if="epubsDisponibles.length > 0" style="display: flex; flex-wrap: wrap; gap: 20px;">
-      <div
-        v-for="epub in epubsDisponibles"
-        :key="epub.name"
-        style="border: 1px solid #444; border-radius: 8px; padding: 20px; width: 280px;"
-      >
-        <!-- Encabezado tarjeta -->
-        <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 10px;">
-          <span style="font-size: 24px;">📄</span>
-          <div>
-            <p style="margin: 0; font-weight: bold;">{{ epub.name }}</p>
-            <p style="margin: 0; font-size: 12px; color: #888;">Subido</p>
-            <p style="margin: 0; font-size: 12px; color: #888;">{{ formatearFecha(epub.created_at) }}</p>
+    <div v-if="epubsDisponibles.length > 0" class="grid-documentos">
+      <div v-for="epub in epubsDisponibles" :key="epub.name" class="tarjeta-documento">
+        <div class="encabezado-tarjeta">
+          <div class="icono-documento">📄</div>
+          <div class="info-documento">
+            <p class="titulo-documento">{{ epub.name }}</p>
+            <p class="subtitulo-documento">Subido</p>
+            <p class="fecha-documento">{{ formatearFecha(epub.created_at) }}</p>
           </div>
         </div>
 
-        <!-- Preview -->
-        <p style="font-size: 14px; color: #aaa; margin-bottom: 15px;">
-          Archivo EPUB
-        </p>
+        <p class="descripcion-documento">Archivo EPUB</p>
 
-        <!-- Botones -->
-        <div style="display: flex; align-items: center; gap: 10px;">
-          <button @click="abrirEpub(epub.name)">📖 Leer</button>
-          <button disabled>✎ Editar</button>
-          <button @click="eliminarEpub(epub.name)" style="color: red; margin-left: auto;">🗑</button>
+        <div class="acciones-documento">
+          <button class="btn-accion" @click="abrirEpub(epub.name)">
+            📖 Leer
+          </button>
+          <button class="btn-accion" @click="editarEpub(epub.name)">
+            ✎ Editar
+          </button>
+          <button class="btn-eliminar" @click="eliminarEpub(epub.name)">
+            🗑
+          </button>
         </div>
       </div>
     </div>
 
     <!-- Sin documentos -->
-    <div v-else-if="!cargando" style="text-align: center; padding: 60px; color: #888;">
-      <p>No tienes documentos aún. ¡Sube tu primer EPUB!</p>
+    <div v-else-if="!cargando" class="estado-vacio">
+      <div class="emoji-vacio">📄</div>
+      <h2>Sin documentos</h2>
+      <div class="botones-vacio">
+        <button class="btn-primario" @click="router.push('/escritura')">
+          ✎ Crear documento
+        </button>
+        <button class="btn-secundario" @click="inputArchivo.click()">
+          ⬆ Subir EPUB
+        </button>
+      </div>
     </div>
-
   </div>
 </template>
 
 <script setup>
 import { ref, onMounted } from 'vue'
 import axios from 'axios'
+import { useRouter } from 'vue-router'
 
-const emit = defineEmits(['epub-cargado'])
+const router = useRouter()
 
 const archivo = ref(null)
 const cargando = ref(false)
@@ -122,16 +129,16 @@ const cargarLista = async () => {
   }
 }
 
-const abrirEpub = async (nombre) => {
-  try {
-    const respuesta = await axios.get(`http://localhost:3000/api/lector/url/${nombre}`)
-    emit('epub-cargado', {
-      url: respuesta.data.url,
-      nombre: nombre
-    })
-  } catch (err) {
-    error.value = 'Error al abrir el archivo.'
-  }
+const abrirEpub = (nombre) => {
+  // Navega a /lectura con el nombre del archivo en la URL; Lector.vue
+  // se encarga de resolver la URL real y abrir el libro
+  router.push({ path: '/lectura', query: { epub: nombre } })
+}
+
+const editarEpub = (nombre) => {
+  // Igual que abrirEpub, pero hacia /escritura: Editor.vue extrae el
+  // texto del EPUB y lo carga en el editor
+  router.push({ path: '/escritura', query: { epub: nombre } })
 }
 
 const eliminarEpub = async (nombre) => {
@@ -148,3 +155,183 @@ onMounted(() => {
   cargarLista()
 })
 </script>
+
+<style scoped>
+.pagina-documentos {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 1.5rem;
+}
+
+.encabezado-documentos {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 2rem;
+}
+
+.encabezado-documentos h1 {
+  font-family: var(--fuente-encabezados);
+  font-size: 1.8rem;
+}
+
+.botones-encabezado {
+  display: flex;
+  gap: 0.6rem;
+}
+
+.btn-secundario {
+  background: white;
+  border: 1px solid var(--color-borde);
+  border-radius: var(--radio-boton);
+  padding: 0.6rem 1.1rem;
+  cursor: pointer;
+  font-weight: 500;
+}
+
+.btn-secundario:hover {
+  background: #f5f5f0;
+}
+
+.btn-primario {
+  background-color: var(--color-primario);
+  color: white;
+  border: none;
+  border-radius: var(--radio-boton);
+  padding: 0.6rem 1.1rem;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.btn-primario:hover {
+  background-color: var(--color-primario-hover);
+}
+
+.mensaje-info {
+  color: var(--color-texto-secundario);
+  margin-bottom: 1rem;
+}
+
+.mensaje-error {
+  color: #c0392b;
+  margin-bottom: 1rem;
+}
+
+.grid-documentos {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 1.2rem;
+}
+
+.tarjeta-documento {
+  background: var(--color-tarjeta);
+  border-radius: var(--radio-tarjeta);
+  padding: 1.3rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+}
+
+.encabezado-tarjeta {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.7rem;
+  margin-bottom: 0.8rem;
+}
+
+.icono-documento {
+  background: #f0f4e8;
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.3rem;
+  flex-shrink: 0;
+}
+
+.info-documento {
+  min-width: 0;
+}
+
+.titulo-documento {
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.subtitulo-documento,
+.fecha-documento {
+  font-size: 0.8rem;
+  color: var(--color-texto-secundario);
+}
+
+.descripcion-documento {
+  font-size: 0.85rem;
+  color: var(--color-texto-secundario);
+  margin-bottom: 1rem;
+}
+
+.acciones-documento {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.btn-accion {
+  flex: 1;
+  background: white;
+  border: 1px solid var(--color-borde);
+  border-radius: 10px;
+  padding: 0.5rem;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+.btn-accion:hover:not(:disabled) {
+  background: #f5f5f0;
+}
+
+.btn-accion:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.btn-eliminar {
+  background: white;
+  border: 1px solid var(--color-borde);
+  border-radius: 10px;
+  padding: 0.5rem 0.7rem;
+  cursor: pointer;
+  color: #c0392b;
+}
+
+.btn-eliminar:hover {
+  background: #fdecea;
+}
+
+.estado-vacio {
+  text-align: center;
+  padding: 4rem 1rem;
+  background: var(--color-tarjeta);
+  border-radius: var(--radio-tarjeta);
+}
+
+.emoji-vacio {
+  font-size: 3.5rem;
+  margin-bottom: 1rem;
+}
+
+.estado-vacio h2 {
+  font-family: var(--fuente-encabezados);
+  font-size: 1.5rem;
+  margin-bottom: 1.5rem;
+}
+
+.botones-vacio {
+  display: flex;
+  justify-content: center;
+  gap: 0.8rem;
+}
+</style>

@@ -1,43 +1,56 @@
 <template>
-  <div class="pagina-auth">
-    <div class="contenedor-auth">
-      <h1 class="logo">lex</h1>
-      <h2>Crear cuenta</h2>
+  <div class="pagina-degradada">
+    <div class="tarjeta-auth tarjeta-ancha">
+      <div class="encabezado-auth">
+        <h1 class="logo">lex</h1>
+        <h2>Crear cuenta</h2>
+      </div>
 
-      <form @submit.prevent="manejarRegistro">
-        <label for="nombre">Nombre completo</label>
-        <input id="nombre" v-model="formulario.nombre" type="text" required />
+      <form @submit.prevent="manejarRegistro" class="formulario-auth">
+        <div class="campo">
+          <label for="nombre">Nombre completo</label>
+          <input id="nombre" v-model="formulario.nombre" type="text" required />
+        </div>
 
-        <label for="correo">Correo electrónico</label>
-        <input id="correo" v-model="formulario.correo" type="email" placeholder="x@correo.com" required />
+        <div class="campo">
+          <label for="correo">Correo electrónico</label>
+          <input id="correo" v-model="formulario.correo" type="email" placeholder="tu@email.com" required />
+        </div>
 
-        <label for="contrasena">Contraseña</label>
-        <input id="contrasena" v-model="formulario.contrasena" type="password" required />
-        <small>Mínimo 8 caracteres, con mayúscula, minúscula y número</small>
+        <div class="campo">
+          <label for="contrasena">Contraseña</label>
+          <input id="contrasena" v-model="formulario.contrasena" type="password" required />
+          <small>Mínimo 8 caracteres, con mayúscula, minúscula y número</small>
+        </div>
 
-        <label for="fechaNacimiento">Fecha de nacimiento</label>
-        <input id="fechaNacimiento" v-model="formulario.fechaNacimiento" type="date" required />
+        <div class="campo">
+          <label for="fechaNacimiento">Fecha de nacimiento</label>
+          <input id="fechaNacimiento" v-model="formulario.fechaNacimiento" type="date" required />
+        </div>
 
         <!-- Solo aparece si detectamos que es menor de edad -->
-        <div v-if="esMenorDeEdad">
+        <div v-if="esMenorDeEdad" class="campo campo-tutor">
           <label for="correoTutor">Correo de tu tutor</label>
           <input id="correoTutor" v-model="formulario.correoTutor" type="email" required />
           <small>Como eres menor de edad, necesitamos el correo de un padre/tutor</small>
         </div>
 
-        <label class="checkbox">
+        <label class="campo-checkbox">
           <input type="checkbox" v-model="formulario.avisoPrivacidadAceptado" required />
           Acepto el aviso de privacidad
         </label>
 
-        <p v-if="mensajeError" class="error">{{ mensajeError }}</p>
+        <p v-if="mensajeError" class="mensaje-error">{{ mensajeError }}</p>
 
-        <button type="submit" :disabled="cargando">
+        <button type="submit" class="btn-primario" :disabled="cargando">
           {{ cargando ? 'Creando cuenta...' : 'Crear cuenta' }}
         </button>
       </form>
 
-      <router-link to="/login">¿Ya tienes una cuenta? Inicia sesión</router-link>
+      <p class="pie-auth">
+        ¿Ya tienes una cuenta?
+        <router-link to="/login">Inicia sesión</router-link>
+      </p>
     </div>
   </div>
 </template>
@@ -78,7 +91,7 @@ async function manejarRegistro() {
   cargando.value = true;
   try {
     await authStore.registrar(formulario);
-    router.push('/inicio'); // redirige al dashboard tras registrarse
+    router.push('/inicio');
   } catch (error) {
     mensajeError.value = error.response?.data?.mensaje || 'Ocurrió un error al registrarte';
   } finally {
@@ -88,113 +101,139 @@ async function manejarRegistro() {
 </script>
 
 <style scoped>
-.pagina-auth {
+.pagina-degradada {
+  min-height: 100vh;
   display: flex;
-  justify-content: center;
   align-items: center;
-  min-height: 85vh;
+  justify-content: center;
   padding: 1rem;
+  background: linear-gradient(to bottom right, #f8f9f5, #e8edd9, #d4e0b8);
 }
 
-.contenedor-auth {
+.tarjeta-auth {
   background: var(--color-tarjeta);
-  border: 1px solid var(--color-borde);
   border-radius: var(--radio-tarjeta);
-  max-width: 420px;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+  padding: 2.5rem;
   width: 100%;
-  padding: 2rem;
+  max-width: 420px;
+}
+
+.tarjeta-ancha {
+  max-width: 460px;
+}
+
+.encabezado-auth {
   text-align: center;
+  margin-bottom: 2rem;
 }
 
-.contenedor-auth .logo {
+.encabezado-auth .logo {
+  font-family: var(--fuente-encabezados);
   color: var(--color-primario);
-  font-size: 2rem;
-  margin-bottom: 0.3rem;
+  font-size: 2.5rem;
+  margin-bottom: 0.25rem;
 }
 
-.contenedor-auth h2 {
-  margin-bottom: 1.5rem;
-  font-size: 1.3rem;
+.encabezado-auth h2 {
+  font-family: var(--fuente-encabezados);
+  font-size: 1.5rem;
 }
 
-.contenedor-auth form {
+.formulario-auth {
   display: flex;
   flex-direction: column;
-  gap: 1rem;
-  text-align: left;
+  gap: 1.1rem;
 }
 
-.contenedor-auth label {
-  font-weight: 600;
-  margin-bottom: 0.25rem;
+.campo label {
   display: block;
   font-size: 0.9rem;
+  font-weight: 600;
+  margin-bottom: 0.4rem;
 }
 
-.contenedor-auth input[type="text"],
-.contenedor-auth input[type="email"],
-.contenedor-auth input[type="password"],
-.contenedor-auth input[type="date"] {
+.campo input[type="text"],
+.campo input[type="email"],
+.campo input[type="password"],
+.campo input[type="date"] {
   width: 100%;
-  padding: 0.65rem;
+  height: 48px;
+  padding: 0 1rem;
   font-size: 1rem;
   border: 1px solid var(--color-borde);
-  border-radius: 8px;
+  border-radius: 12px;
   box-sizing: border-box;
 }
 
-.contenedor-auth input:focus {
+.campo input:focus {
   outline: 2px solid var(--color-primario);
   border-color: var(--color-primario);
 }
 
-.contenedor-auth small {
+.campo small {
+  display: block;
+  margin-top: 0.35rem;
+  font-size: 0.8rem;
   color: var(--color-texto-secundario);
-  font-size: 0.85rem;
 }
 
-.contenedor-auth .checkbox {
+.campo-tutor {
+  background: #f5f7ee;
+  padding: 0.9rem;
+  border-radius: 12px;
+}
+
+.campo-checkbox {
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  font-weight: normal;
+  font-size: 0.9rem;
 }
 
-.contenedor-auth button {
-  padding: 0.75rem;
+.mensaje-error {
+  color: #c0392b;
+  background-color: #fdecea;
+  padding: 0.7rem;
+  border-radius: 10px;
+  font-size: 0.9rem;
+}
+
+.btn-primario {
+  height: 48px;
   font-size: 1rem;
   font-weight: 600;
   background-color: var(--color-primario);
   color: white;
   border: none;
-  border-radius: var(--radio-boton);
+  border-radius: 12px;
   cursor: pointer;
-  margin-top: 0.5rem;
+  margin-top: 0.3rem;
 }
 
-.contenedor-auth button:hover:not(:disabled) {
+.btn-primario:hover:not(:disabled) {
   background-color: var(--color-primario-hover);
 }
 
-.contenedor-auth button:disabled {
-  background-color: #aaa;
+.btn-primario:disabled {
+  opacity: 0.6;
   cursor: not-allowed;
 }
 
-.contenedor-auth .error {
-  color: #c0392b;
-  background-color: #fdecea;
-  padding: 0.6rem;
-  border-radius: 6px;
+.pie-auth {
+  text-align: center;
+  margin-top: 1.5rem;
   font-size: 0.9rem;
+  color: var(--color-texto-secundario);
 }
 
-.contenedor-auth > a {
-  display: block;
-  margin-top: 1.2rem;
-  text-align: center;
-  color: var(--color-texto-secundario);
-  font-size: 0.9rem;
+.pie-auth a {
+  color: var(--color-primario);
+  font-weight: 600;
   text-decoration: none;
+}
+
+.pie-auth a:hover {
+  text-decoration: underline;
 }
 </style>

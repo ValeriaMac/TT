@@ -12,12 +12,14 @@ import Editor from '@/componentes/Editor.vue'
 
 <style scoped>
 .pagina-escritura {
-  max-width: 800px;
+  max-width: 950px;
   margin: 0 auto;
   padding: 1.5rem;
 }
 
 .titulo-pagina {
-  margin-bottom: 1rem;
+  font-family: var(--fuente-encabezados);
+  font-size: 1.8rem;
+  margin-bottom: 1.2rem;
 }
 </style>

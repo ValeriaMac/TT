@@ -1,26 +1,35 @@
 <template>
-  <div class="pagina-auth">
-    <div class="contenedor-auth">
-      <h1 class="logo">lex</h1>
-      <h2>Iniciar sesión</h2>
+  <div class="pagina-degradada">
+    <div class="tarjeta-auth">
+      <div class="encabezado-auth">
+        <h1 class="logo">lex</h1>
+        <h2>Iniciar sesión</h2>
+      </div>
 
-      <form @submit.prevent="manejarLogin">
-        <label for="correo">Correo electrónico</label>
-        <input id="correo" v-model="correo" type="email" placeholder="x@correo.com" required />
+      <form @submit.prevent="manejarLogin" class="formulario-auth">
+        <div class="campo">
+          <label for="correo">Correo electrónico</label>
+          <input id="correo" v-model="correo" type="email" placeholder="tu@email.com" required />
+        </div>
 
-        <label for="contrasena">Contraseña</label>
-        <input id="contrasena" v-model="contrasena" type="password" required />
+        <div class="campo">
+          <label for="contrasena">Contraseña</label>
+          <input id="contrasena" v-model="contrasena" type="password" placeholder="Tu contraseña" required />
+        </div>
 
         <router-link to="/recuperar" class="enlace-olvidaste">¿Olvidaste tu contraseña?</router-link>
 
-        <p v-if="mensajeError" class="error">{{ mensajeError }}</p>
+        <p v-if="mensajeError" class="mensaje-error">{{ mensajeError }}</p>
 
-        <button type="submit" :disabled="cargando">
+        <button type="submit" class="btn-primario" :disabled="cargando">
           {{ cargando ? 'Entrando...' : 'Iniciar sesión' }}
         </button>
       </form>
 
-      <router-link to="/registro">¿No tienes cuenta? Regístrate</router-link>
+      <p class="pie-auth">
+        ¿No tienes cuenta?
+        <router-link to="/registro">Regístrate</router-link>
+      </p>
     </div>
   </div>
 </template>
@@ -53,107 +62,127 @@ async function manejarLogin() {
 </script>
 
 <style scoped>
-.pagina-auth {
+/* Estas clases (.pagina-degradada, .tarjeta-auth, .campo, .btn-primario, etc.)
+   se repiten igual en Registro.vue y RecuperarContrasena.vue, para que las
+   3 pantallas de autenticación se vean como parte de la misma familia. */
+
+.pagina-degradada {
+  min-height: 100vh;
   display: flex;
-  justify-content: center;
   align-items: center;
-  min-height: 85vh;
+  justify-content: center;
   padding: 1rem;
+  background: linear-gradient(to bottom right, #f8f9f5, #e8edd9, #d4e0b8);
 }
 
-.contenedor-auth {
+.tarjeta-auth {
   background: var(--color-tarjeta);
-  border: 1px solid var(--color-borde);
   border-radius: var(--radio-tarjeta);
-  max-width: 380px;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+  padding: 2.5rem;
   width: 100%;
-  padding: 2rem;
+  max-width: 420px;
+}
+
+.encabezado-auth {
   text-align: center;
+  margin-bottom: 2rem;
 }
 
-.contenedor-auth .logo {
+.encabezado-auth .logo {
+  font-family: var(--fuente-encabezados);
   color: var(--color-primario);
-  font-size: 2rem;
-  margin-bottom: 0.3rem;
+  font-size: 2.5rem;
+  margin-bottom: 0.25rem;
 }
 
-.contenedor-auth h2 {
-  margin-bottom: 1.5rem;
-  font-size: 1.3rem;
+.encabezado-auth h2 {
+  font-family: var(--fuente-encabezados);
+  font-size: 1.5rem;
 }
 
-.contenedor-auth form {
+.formulario-auth {
   display: flex;
   flex-direction: column;
-  gap: 1rem;
-  text-align: left;
+  gap: 1.2rem;
 }
 
-.contenedor-auth label {
-  font-weight: 600;
-  margin-bottom: 0.25rem;
+.campo label {
   display: block;
   font-size: 0.9rem;
+  font-weight: 600;
+  margin-bottom: 0.4rem;
 }
 
-.contenedor-auth input[type="email"],
-.contenedor-auth input[type="password"] {
+.campo input {
   width: 100%;
-  padding: 0.65rem;
+  height: 48px;
+  padding: 0 1rem;
   font-size: 1rem;
   border: 1px solid var(--color-borde);
-  border-radius: 8px;
+  border-radius: 12px;
   box-sizing: border-box;
 }
 
-.contenedor-auth input:focus {
+.campo input:focus {
   outline: 2px solid var(--color-primario);
   border-color: var(--color-primario);
 }
 
 .enlace-olvidaste {
-  align-self: flex-end;
+  text-align: right;
   font-size: 0.85rem;
-  color: var(--color-texto-secundario);
+  color: var(--color-primario);
   text-decoration: none;
-  margin-top: -0.5rem;
+  margin-top: -0.6rem;
 }
 
-.contenedor-auth button {
-  padding: 0.75rem;
+.enlace-olvidaste:hover {
+  text-decoration: underline;
+}
+
+.mensaje-error {
+  color: #c0392b;
+  background-color: #fdecea;
+  padding: 0.7rem;
+  border-radius: 10px;
+  font-size: 0.9rem;
+}
+
+.btn-primario {
+  height: 48px;
   font-size: 1rem;
   font-weight: 600;
   background-color: var(--color-primario);
   color: white;
   border: none;
-  border-radius: var(--radio-boton);
+  border-radius: 12px;
   cursor: pointer;
-  margin-top: 0.5rem;
 }
 
-.contenedor-auth button:hover:not(:disabled) {
+.btn-primario:hover:not(:disabled) {
   background-color: var(--color-primario-hover);
 }
 
-.contenedor-auth button:disabled {
-  background-color: #aaa;
+.btn-primario:disabled {
+  opacity: 0.6;
   cursor: not-allowed;
 }
 
-.contenedor-auth .error {
-  color: #c0392b;
-  background-color: #fdecea;
-  padding: 0.6rem;
-  border-radius: 6px;
+.pie-auth {
+  text-align: center;
+  margin-top: 1.5rem;
   font-size: 0.9rem;
+  color: var(--color-texto-secundario);
 }
 
-.contenedor-auth > a {
-  display: block;
-  margin-top: 1.2rem;
-  text-align: center;
-  color: var(--color-texto-secundario);
-  font-size: 0.9rem;
+.pie-auth a {
+  color: var(--color-primario);
+  font-weight: 600;
   text-decoration: none;
+}
+
+.pie-auth a:hover {
+  text-decoration: underline;
 }
 </style>

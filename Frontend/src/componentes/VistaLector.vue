@@ -1,47 +1,58 @@
 <template>
-  <div style="padding: 20px;">
+  <div class="pagina-lector">
+    <h1 class="titulo-pagina">Lectura</h1>
 
-    <!-- Barra fija de controles -->
-    <div style="position: fixed; top: 0; left: 0; right: 0; background-color: #1e1e1e; padding: 10px 20px; z-index: 100; display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
-      <button @click="emit('regresar')">← Regresar</button>
-      <h2 style="margin: 0; font-size: 16px; flex: 1;">{{ titulo }}</h2>
-      <button @click="reproducir" :disabled="leyendo">▶ Reproducir</button>
-      <button @click="pausar" :disabled="!leyendo">⏸ Pausar</button>
-      <button @click="reiniciar">↺ Reiniciar</button>
-      <label style="color: white;">Velocidad:</label>
-      <input
-        type="range"
-        min="0.5"
-        max="2"
-        step="0.1"
-        v-model="velocidad"
-        style="width: 80px;"
-      />
-      <span style="color: white;">{{ velocidad }}x</span>
-      <label style="color: white;">Voz:</label>
-      <select v-model="vozSeleccionada" style="max-width: 150px;">
-        <option v-for="voz in vocesDisponibles" :key="voz.name" :value="voz.name">
-          {{ voz.name }}
-        </option>
-      </select>
+    <!-- Barra de controles -->
+    <div class="tarjeta-controles">
+      <button class="btn-volver" @click="emit('regresar')" title="Volver a Documentos">
+        ← <span class="texto-volver">Documentos</span>
+      </button>
+
+      <div class="grupo-reproduccion">
+        <button
+          class="btn-icono btn-principal"
+          @click="leyendo ? pausar() : reproducir()"
+          :title="leyendo ? 'Pausar' : 'Reproducir'"
+        >
+          <span v-if="leyendo">⏸</span>
+          <span v-else>▶</span>
+        </button>
+        <button
+          class="btn-icono"
+          @click="detener"
+          :disabled="!leyendo && !pausado"
+          title="Detener"
+        >⏹</button>
+        <button class="btn-icono" @click="reiniciar" title="Reiniciar">↺</button>
+      </div>
+
+      <div class="grupo-control">
+        <label>Voz</label>
+        <select v-model="vozSeleccionada">
+          <option v-for="voz in vocesDisponibles" :key="voz.name" :value="voz.name">
+            {{ voz.name }}
+          </option>
+        </select>
+      </div>
+
+      <div class="grupo-control grupo-velocidad">
+        <label>Velocidad: {{ velocidad }}x</label>
+        <input type="range" min="0.5" max="2" step="0.1" v-model="velocidad" />
+      </div>
     </div>
 
-    <p v-if="cargando" style="margin-top: 60px;">Cargando libro...</p>
-    <p v-if="errorMsg" style="color: red; margin-top: 60px;">{{ errorMsg }}</p>
+    <p v-if="cargando" class="mensaje-cargando">Cargando libro...</p>
+    <p v-if="errorMsg" class="mensaje-error">{{ errorMsg }}</p>
 
-    <div v-if="!cargando && progresoGuardado" style="margin-top: 60px; padding: 10px; background-color: #2a2a2a; border-radius: 8px; color: #aaa; font-size: 14px;">
+    <div v-if="!cargando && progresoGuardado" class="aviso-progreso">
       📖 Continuando desde donde te quedaste...
     </div>
 
     <!-- Contenido del libro con formato -->
-    <div
-      v-show="!cargando"
-      ref="contenedorLibro"
-      id="contenedor-libro"
-      :style="progresoGuardado ? 'margin-top: 10px;' : 'margin-top: 60px;'"
-      style="max-width: 700px; margin-left: auto; margin-right: auto; line-height: 1.8;"
-    ></div>
-
+    <div class="tarjeta-lectura" v-show="!cargando">
+      <h2 class="titulo-documento">{{ titulo }}</h2>
+      <div ref="contenedorLibro" id="contenedor-libro"></div>
+    </div>
   </div>
 </template>
 
@@ -55,6 +66,17 @@ const props = defineProps({
   url: String,
   nombreArchivo: String
 })
+
+// Texto de muestra que se usa cuando no hay ningún documento elegido
+// (por ejemplo, al entrar a /lectura directo desde el menú, sin pasar
+// primero por Documentos)
+const TEXTO_PREDETERMINADO = {
+  titulo: 'El Principito - Fragmento',
+  html: `<p>Todas las personas mayores fueron al principio niños, aunque pocas
+    de ellas lo recuerdan. Cuando yo tenía seis años vi en un libro sobre la
+    selva virgen que se titulaba "Historias vividas", una magnífica lámina.
+    Representaba una serpiente boa que se tragaba a una fiera.</p>`
+}
 
 const emit = defineEmits(['regresar'])
 
@@ -73,7 +95,7 @@ const progresoGuardado = ref(false)
 let libro = null
 let palabrasDOM = []
 
-const claveProgreso = `progreso-${props.nombreArchivo}`
+const claveProgreso = `progreso-${props.nombreArchivo || 'texto-predeterminado'}`
 
 // ===== Personalización visual (RF_05-RF_08) =====
 const configuracionStore = useConfiguracionStore()
@@ -192,7 +214,54 @@ const resaltarCaracteresConfigurados = (contenedor, mapaColores) => {
   })
 }
 
+// Toma el HTML ya listo (sea el de un EPUB o el texto predeterminado)
+// y le aplica el mismo tratamiento: estilos, envolver palabras para
+// el resaltado de TTS, progreso guardado, etc.
+const mostrarContenido = (html) => {
+  if (!contenedorLibro.value) return
+
+  contenedorLibro.value.innerHTML = html
+
+  const est = estilosPersonalizacion.value
+  Array.from(contenedorLibro.value.querySelectorAll('*')).forEach(el => {
+    el.style.color = est.color
+    el.style.backgroundColor = 'transparent'
+    el.style.fontFamily = est.fontFamily
+    el.style.letterSpacing = est.letterSpacing
+  })
+
+  envolverPalabras(contenedorLibro.value)
+  palabrasDOM = contenedorLibro.value.querySelectorAll('.palabra')
+
+  resaltarCaracteresConfigurados(contenedorLibro.value, configuracionStore.config?.letras_resaltadas)
+
+  const indiceGuardado = cargarProgreso()
+  if (indiceGuardado > 0) {
+    progresoGuardado.value = true
+    indicePausa.value = indiceGuardado
+
+    setTimeout(() => {
+      if (palabrasDOM[indiceGuardado]) {
+        palabrasDOM[indiceGuardado].scrollIntoView({
+          behavior: 'smooth',
+          block: 'center'
+        })
+      }
+    }, 500)
+  }
+
+  cargando.value = false
+}
+
 const cargarLibro = async () => {
+  // Sin documento elegido: se muestra el texto predeterminado
+  // y no se intenta cargar ningún EPUB
+  if (!props.url) {
+    titulo.value = TEXTO_PREDETERMINADO.titulo
+    mostrarContenido(TEXTO_PREDETERMINADO.html)
+    return
+  }
+
   try {
     const respuesta = await fetch(props.url)
     const blob = await respuesta.blob()
@@ -222,39 +291,7 @@ const cargarLibro = async () => {
       }
     }
 
-    if (contenedorLibro.value) {
-      contenedorLibro.value.innerHTML = htmlCompleto
-
-      const est = estilosPersonalizacion.value
-      Array.from(contenedorLibro.value.querySelectorAll('*')).forEach(el => {
-        el.style.color = est.color
-        el.style.backgroundColor = 'transparent'
-        el.style.fontFamily = est.fontFamily
-        el.style.letterSpacing = est.letterSpacing
-      })
-
-      envolverPalabras(contenedorLibro.value)
-      palabrasDOM = contenedorLibro.value.querySelectorAll('.palabra')
-
-      resaltarCaracteresConfigurados(contenedorLibro.value, configuracionStore.config?.letras_resaltadas)
-
-      const indiceGuardado = cargarProgreso()
-      if (indiceGuardado > 0) {
-        progresoGuardado.value = true
-        indicePausa.value = indiceGuardado
-
-        setTimeout(() => {
-          if (palabrasDOM[indiceGuardado]) {
-            palabrasDOM[indiceGuardado].scrollIntoView({
-              behavior: 'smooth',
-              block: 'center'
-            })
-          }
-        }, 500)
-      }
-    }
-
-    cargando.value = false
+    mostrarContenido(htmlCompleto)
 
   } catch (err) {
     console.log('Error:', err)
@@ -412,3 +449,173 @@ onUnmounted(() => {
   if (libro) libro.destroy()
 })
 </script>
+
+<style scoped>
+.pagina-lector {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 1.5rem;
+}
+
+.titulo-pagina {
+  font-family: var(--fuente-encabezados);
+  font-size: 1.8rem;
+  margin-bottom: 1.2rem;
+}
+
+.tarjeta-controles {
+  background: var(--color-tarjeta);
+  border-radius: var(--radio-tarjeta);
+  padding: 1rem 1.2rem;
+  margin-bottom: 1.5rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 1rem;
+}
+
+.btn-volver {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-weight: 600;
+  color: var(--color-texto-secundario);
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.btn-volver:hover {
+  color: var(--color-primario);
+}
+
+.grupo-reproduccion {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.btn-icono {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  border: 1px solid var(--color-borde);
+  background: white;
+  cursor: pointer;
+  font-size: 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.btn-icono:hover:not(:disabled) {
+  background: #f5f5f0;
+}
+
+.btn-icono:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.btn-icono.btn-principal {
+  background-color: var(--color-primario);
+  color: white;
+  border: none;
+}
+
+.btn-icono.btn-principal:hover {
+  background-color: var(--color-primario-hover);
+}
+
+.grupo-control {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.85rem;
+}
+
+.grupo-control select {
+  padding: 0.4rem 0.6rem;
+  border-radius: 8px;
+  border: 1px solid var(--color-borde);
+  max-width: 160px;
+}
+
+.grupo-velocidad {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.3rem;
+  min-width: 140px;
+}
+
+.grupo-velocidad input[type="range"] {
+  width: 100%;
+}
+
+.mensaje-cargando,
+.mensaje-error {
+  padding: 0 0.2rem;
+}
+
+.mensaje-error {
+  color: #c0392b;
+}
+
+.aviso-progreso {
+  background: #f0f4e8;
+  color: var(--color-texto-secundario);
+  padding: 0.7rem 1rem;
+  border-radius: 10px;
+  font-size: 0.85rem;
+  margin-bottom: 1rem;
+}
+
+.tarjeta-lectura {
+  background: var(--color-tarjeta);
+  border-radius: var(--radio-tarjeta);
+  padding: 2rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+  min-height: 400px;
+}
+
+.titulo-documento {
+  font-family: var(--fuente-encabezados);
+  font-size: 1.4rem;
+  margin-bottom: 1.2rem;
+}
+
+#contenedor-libro {
+  max-width: 700px;
+  margin: 0 auto;
+  line-height: 1.8;
+}
+
+/* ===== Responsivo: pantallas angostas (celular) ===== */
+@media (max-width: 640px) {
+  .pagina-lector {
+    padding: 1rem;
+  }
+
+  .tarjeta-controles {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .texto-volver {
+    display: none; /* solo queda la flecha "←" para ahorrar espacio */
+  }
+
+  .grupo-reproduccion {
+    justify-content: center;
+  }
+
+  .grupo-control select {
+    max-width: none;
+    width: 100%;
+  }
+
+  .tarjeta-lectura {
+    padding: 1.2rem;
+  }
+}
+</style>

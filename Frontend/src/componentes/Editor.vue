@@ -1,123 +1,281 @@
 <!--
   Editor.vue — Módulo de escritura (CU-SIS-10, RF_13, RF_14)
-  Corrector ortográfico interactivo: resalta palabras con error
-  y muestra sugerencias al hacer clic sobre ellas.
+  Corrector ortográfico interactivo + barra de formato de texto.
 -->
 <template>
-  <div class="editor-contenedor" :style="estilosPersonalizacion">
-    <!-- Dos capas superpuestas: el textarea real (texto invisible)
-         y un div debajo que pinta el resaltado de errores -->
-    <div class="editor-envoltura">
-      <textarea
-        v-model="texto"
-        @input="alEscribir"
-        class="editor-textarea"
-        placeholder="Escribe aquí..."
-      ></textarea>
+  <div class="editor-widget">
 
-      <div
-        class="editor-resaltado"
-        v-html="textoConResaltado"
-        @click="mostrarSugerencias"
-      ></div>
+    <!-- Barra superior: título, plantilla, guardar -->
+    <div class="tarjeta-barra">
+      <input v-model="titulo" class="input-titulo" placeholder="Título del documento" />
+
+      <select v-model="plantillaSeleccionada" @change="alCambiarPlantilla" class="select-plantilla">
+        <option value="">Seleccionar plantilla</option>
+        <option v-for="plantilla in configuracionStore.plantillas" :key="plantilla.id" :value="plantilla.id">
+          {{ plantilla.nombre }}
+        </option>
+      </select>
+
+      <button class="btn-guardar" @click="guardarBorrador">
+        💾 Guardar
+      </button>
+    </div>
+    <p v-if="mensajeGuardado" class="mensaje-guardado">{{ mensajeGuardado }}</p>
+    <p v-if="cargandoEpub" class="mensaje-guardado">Cargando contenido del documento...</p>
+
+    <!-- Barra de formato de texto -->
+    <div class="tarjeta-formato">
+      <div class="grupo-formato">
+        <button
+          v-for="opcion in opcionesAlineacion"
+          :key="opcion.valor"
+          class="btn-formato"
+          :class="{ activo: alineacion === opcion.valor }"
+          :title="opcion.titulo"
+          @click="alineacion = opcion.valor"
+        >{{ opcion.icono }}</button>
+      </div>
+
+      <div class="grupo-formato">
+        <button class="btn-formato" title="Viñetas" @click="insertarFormato('bullet')">•</button>
+      </div>
+
+      <div class="grupo-formato">
+        <button class="btn-formato" title="Negrita" @click="insertarFormato('bold')"><b>B</b></button>
+        <button class="btn-formato" title="Cursiva" @click="insertarFormato('italic')"><i>I</i></button>
+        <button class="btn-formato" title="Tachado" @click="insertarFormato('strikethrough')"><s>S</s></button>
+      </div>
+
+      <div class="grupo-formato">
+        <button class="btn-formato" title="Título 1" @click="insertarFormato('h1')">H1</button>
+        <button class="btn-formato" title="Título 2" @click="insertarFormato('h2')">H2</button>
+      </div>
+
+      <button class="btn-formato" title="Insertar tabla" @click="insertarFormato('table')">▦</button>
     </div>
 
-    <p class="editor-estado">
-      <span v-if="revisando">Revisando ortografía...</span>
-      <span v-else-if="errores.length === 0 && texto.length > 0">
-        Sin errores detectados ✓
-      </span>
-      <span v-else-if="errores.length > 0">
-        {{ errores.length }} posible(s) error(es) ortográfico(s)
-      </span>
-    </p>
+    <!-- Editor con corrector ortográfico -->
+    <div class="editor-contenedor" :style="estilosPersonalizacion">
+      <!-- contenteditable en vez de textarea: el subrayado de errores
+           vive DENTRO del mismo elemento donde se escribe (como spans
+           reales en el DOM), no en una capa aparte que se pueda
+           desincronizar -->
+      <div
+        ref="contenidoRef"
+        class="editor-textarea"
+        :style="{ textAlign: alineacion }"
+        contenteditable="true"
+        spellcheck="false"
+        autocorrect="off"
+        autocapitalize="off"
+        :data-placeholder="texto.length === 0 ? 'Empieza a escribir...' : ''"
+        @input="alEscribir"
+      ></div>
 
-    <!-- Menú de sugerencias al hacer clic en una palabra marcada -->
-    <div
-      v-if="palabraSeleccionada"
-      class="menu-sugerencias"
-      :style="{ top: posicionMenu.y + 'px', left: posicionMenu.x + 'px' }"
-    >
-      <p class="menu-titulo">"{{ palabraSeleccionada.palabra }}"</p>
-      <ul>
-        <li
-          v-for="sugerencia in palabraSeleccionada.sugerencias"
-          :key="sugerencia"
-          @click="aplicarSugerencia(sugerencia)"
-        >
-          {{ sugerencia }}
-        </li>
-        <li v-if="palabraSeleccionada.sugerencias.length === 0" class="menu-sin-sugerencias">
-          Sin sugerencias disponibles
-        </li>
-      </ul>
-      <button @click="ignorarPalabra" class="menu-ignorar">Ignorar</button>
+      <p class="editor-estado" v-if="revisando">Revisando ortografía...</p>
+
+      <!-- Lista de errores encontrados, con acceso rápido a cada uno -->
+      <div v-if="!revisando && errores.length > 0" class="lista-errores">
+        <p class="titulo-lista-errores">{{ errores.length }} posible(s) error(es) ortográfico(s)</p>
+        <div v-for="(error, indice) in errores" :key="indice" class="fila-error">
+          <span class="palabra-con-error">{{ error.palabra }}</span>
+          <div class="sugerencias-error">
+            <button
+              v-for="sugerencia in error.sugerencias"
+              :key="sugerencia"
+              class="btn-sugerencia"
+              @click="aplicarSugerencia(error, sugerencia)"
+            >
+              {{ sugerencia }}
+            </button>
+            <span v-if="error.sugerencias.length === 0" class="sin-sugerencias">sin sugerencias</span>
+            <button class="btn-ignorar" @click="ignorarPalabra(error)" title="Ignorar esta palabra">✕</button>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue';
+import { ref, onMounted, nextTick } from 'vue';
 import axios from 'axios';
+import Epub from 'epubjs';
+import { useRoute } from 'vue-router';
 import { useEstilosPersonalizacion } from '@/composables/useEstilosPersonalizacion';
 import { useConfiguracionStore } from '@/store/configuracion.store';
 
+const route = useRoute();
 const configuracionStore = useConfiguracionStore();
 const { estilosPersonalizacion } = useEstilosPersonalizacion();
 
-onMounted(() => {
-  // Si el usuario llegó directo a /escritura sin pasar antes por otra
-  // vista que ya haya cargado su configuración, se carga aquí
+const cargandoEpub = ref(false);
+
+onMounted(async () => {
   if (!configuracionStore.config) {
     configuracionStore.cargarConfiguracion();
   }
+  // Las plantillas ya existen como funcionalidad real (Configuración
+  // Visual); aquí solo se reutilizan para poder aplicarlas al escribir
+  if (configuracionStore.plantillas.length === 0) {
+    configuracionStore.cargarPlantillas();
+  }
+
+  const nombreEpub = route.query.epub;
+  if (nombreEpub) {
+    // Viene de "Editar" en Documentos: se carga el texto del EPUB,
+    // no el borrador local genérico
+    await cargarTextoDesdeEpub(nombreEpub);
+  } else {
+    cargarBorradorLocal();
+  }
 });
 
-const texto = ref('');
-const errores = ref([]);
-const revisando = ref(false);
-const palabraSeleccionada = ref(null);
-const posicionMenu = ref({ x: 0, y: 0 });
-
-// Palabras que el usuario marcó como "ignorar" en esta sesión
-const palabrasIgnoradas = ref(new Set());
-
-let temporizadorDebounce = null;
-
-// Espera 600ms sin escritura antes de mandar la petición al backend
-function alEscribir() {
-  clearTimeout(temporizadorDebounce);
-  temporizadorDebounce = setTimeout(revisarOrtografia, 600);
-}
-
-async function revisarOrtografia() {
-  if (texto.value.trim().length === 0) {
-    errores.value = [];
-    return;
-  }
-
-  revisando.value = true;
-
+// Descarga el EPUB y extrae su texto plano (sin las etiquetas HTML)
+// para poder editarlo como texto normal. Es el mismo mecanismo que ya
+// usa VistaLector.vue para leerlo, aquí solo se queda con el texto.
+async function cargarTextoDesdeEpub(nombre) {
+  cargandoEpub.value = true;
   try {
-    const token = localStorage.getItem('token');
-    const respuesta = await axios.post(
-      '/api/escritura/revisar',
-      { texto: texto.value },
-      { headers: { Authorization: `Bearer ${token}` } }
-    );
+    const respuestaUrl = await axios.get(`http://localhost:3000/api/lector/url/${nombre}`);
+    const respuestaArchivo = await fetch(respuestaUrl.data.url);
+    const arrayBuffer = await (await respuestaArchivo.blob()).arrayBuffer();
 
-    errores.value = respuesta.data.errores.filter(
-      (error) => !palabrasIgnoradas.value.has(error.palabra.toLowerCase())
-    );
+    const libro = Epub(arrayBuffer);
+    const metadata = await libro.loaded.metadata;
+    titulo.value = metadata.title && metadata.title.trim() !== '' ? metadata.title : nombre;
+
+    await libro.ready;
+
+    let textoCompleto = '';
+    for (const item of libro.spine.items) {
+      const seccion = await libro.spine.get(item.href);
+      if (seccion) {
+        await seccion.load(libro.load.bind(libro));
+        const body = seccion.document?.body;
+        if (body) {
+          textoCompleto += body.textContent.trim() + '\n\n';
+        }
+        seccion.unload();
+      }
+    }
+
+    texto.value = textoCompleto.trim();
+    nextTick(pintarTextoInicial);
+    revisarOrtografia();
+
+    // El borrador de este documento se guarda aparte, para no
+    // mezclarse con el borrador genérico de "documento nuevo"
+    claveBorradorActual.value = `borrador-escritura-${nombre}`;
+    libro.destroy();
   } catch (error) {
-    console.error('No se pudo revisar el texto:', error);
+    console.error('No se pudo extraer el texto del EPUB:', error);
+    mensajeGuardado.value = 'No se pudo cargar el contenido de este documento.';
   } finally {
-    revisando.value = false;
+    cargandoEpub.value = false;
   }
 }
 
-// Reconstruye el texto envolviendo cada palabra con error en un <span>
-const textoConResaltado = computed(() => {
+const titulo = ref('');
+const texto = ref('');
+const alineacion = ref('left');
+const plantillaSeleccionada = ref('');
+const mensajeGuardado = ref('');
+const contenidoRef = ref(null);
+
+// ===== Utilidades para trabajar con el cursor dentro de un contenteditable =====
+//
+// A diferencia de un <textarea> (que tiene selectionStart/selectionEnd
+// listos para usarse), en un contenteditable hay que calcular la
+// posición del cursor "a mano", contando caracteres desde el inicio
+// del elemento hasta donde está el cursor. Esto es necesario para
+// poder repintar el texto (agregando los <span> de los errores) sin
+// que el cursor salte a otro lugar.
+
+// Cuenta cuántos caracteres hay entre el inicio del elemento y la
+// posición actual del cursor
+function obtenerPosicionCursor(elemento) {
+  const seleccion = window.getSelection();
+  if (!seleccion.rangeCount) return 0;
+
+  const rango = seleccion.getRangeAt(0);
+  const rangoHastaElCursor = rango.cloneRange();
+  rangoHastaElCursor.selectNodeContents(elemento);
+  rangoHastaElCursor.setEnd(rango.endContainer, rango.endOffset);
+
+  return rangoHastaElCursor.toString().length;
+}
+
+// Devuelve en qué caracteres empieza y termina el texto que el
+// usuario tiene seleccionado (para negrita, cursiva, etc.)
+function obtenerRangoSeleccionado(elemento) {
+  const seleccion = window.getSelection();
+  if (!seleccion.rangeCount) return { inicio: 0, fin: 0 };
+
+  const rango = seleccion.getRangeAt(0);
+
+  const antesDelInicio = document.createRange();
+  antesDelInicio.selectNodeContents(elemento);
+  antesDelInicio.setEnd(rango.startContainer, rango.startOffset);
+
+  const antesDelFin = document.createRange();
+  antesDelFin.selectNodeContents(elemento);
+  antesDelFin.setEnd(rango.endContainer, rango.endOffset);
+
+  return { inicio: antesDelInicio.toString().length, fin: antesDelFin.toString().length };
+}
+
+// La operación inversa: dado un número de caracteres, encuentra el
+// nodo de texto exacto (y la posición dentro de él) y pone el cursor
+// ahí. Recorre el contenido igual que se leería en voz alta, entrando
+// a cada span y contando sus letras una por una.
+function establecerPosicionCursor(elemento, posicion) {
+  const seleccion = window.getSelection();
+  const rango = document.createRange();
+  let restante = posicion;
+  let encontrado = false;
+
+  function recorrer(nodo) {
+    if (encontrado) return;
+
+    if (nodo.nodeType === Node.TEXT_NODE) {
+      const longitud = nodo.textContent.length;
+      if (restante <= longitud) {
+        rango.setStart(nodo, restante);
+        rango.setEnd(nodo, restante);
+        encontrado = true;
+      } else {
+        restante -= longitud;
+      }
+      return;
+    }
+
+    for (const hijo of nodo.childNodes) {
+      recorrer(hijo);
+      if (encontrado) return;
+    }
+  }
+
+  recorrer(elemento);
+
+  if (encontrado) {
+    seleccion.removeAllRanges();
+    seleccion.addRange(rango);
+  }
+}
+
+function escaparHtml(texto) {
+  return texto
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+}
+
+// Reconstruye el HTML del editor: el texto normal tal cual, y las
+// palabras marcadas como error envueltas en un <span> con el
+// subrayado ondulado. Se usa solo en momentos puntuales (no en cada
+// tecla), guardando y restaurando el cursor alrededor de la llamada.
+function construirHtmlConErrores() {
   if (errores.value.length === 0) return escaparHtml(texto.value);
 
   let resultado = '';
@@ -130,146 +288,474 @@ const textoConResaltado = computed(() => {
     const palabra = texto.value.slice(error.posicion, error.posicion + error.palabra.length);
 
     resultado += escaparHtml(antes);
-    resultado += `<span class="palabra-error" data-palabra="${palabra}">${escaparHtml(palabra)}</span>`;
+    resultado += `<span class="palabra-error">${escaparHtml(palabra)}</span>`;
 
     ultimaPosicion = error.posicion + error.palabra.length;
   });
 
   resultado += escaparHtml(texto.value.slice(ultimaPosicion));
   return resultado;
-});
-
-function escaparHtml(texto) {
-  return texto
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/\n/g, '<br>');
 }
 
-function mostrarSugerencias(evento) {
-  const elemento = evento.target;
-  if (!elemento.classList.contains('palabra-error')) return;
+// Repinta el contenido del editor (con o sin subrayados) SIN mover
+// el cursor: primero anota dónde estaba, reconstruye el HTML, y
+// vuelve a poner el cursor exactamente en ese mismo lugar.
+function repintarManteniendoCursor() {
+  const el = contenidoRef.value;
+  if (!el) return;
 
-  const palabra = elemento.dataset.palabra;
-  const error = errores.value.find((e) => e.palabra === palabra);
-  if (!error) return;
-
-  palabraSeleccionada.value = error;
-  posicionMenu.value = { x: evento.clientX, y: evento.clientY };
+  const posicionGuardada = obtenerPosicionCursor(el);
+  el.innerHTML = construirHtmlConErrores();
+  establecerPosicionCursor(el, posicionGuardada);
 }
 
-function aplicarSugerencia(sugerencia) {
-  const error = palabraSeleccionada.value;
+// Pone texto nuevo en el editor desde fuera (al cargar un borrador o
+// un EPUB), sin necesidad de conservar ningún cursor previo
+function pintarTextoInicial() {
+  const el = contenidoRef.value;
+  if (!el) return;
+  el.innerHTML = construirHtmlConErrores();
+}
 
+const opcionesAlineacion = [
+  { valor: 'left', icono: '≡', titulo: 'Alinear izquierda' },
+  { valor: 'center', icono: '≣', titulo: 'Alinear centro' },
+  { valor: 'right', icono: '≡', titulo: 'Alinear derecha' },
+  { valor: 'justify', icono: '☰', titulo: 'Justificar' },
+];
+
+function alCambiarPlantilla() {
+  if (plantillaSeleccionada.value) {
+    configuracionStore.aplicarPlantilla(plantillaSeleccionada.value);
+  }
+}
+
+// Guardado local (borrador): por ahora no existe un backend de
+// "documentos de texto", así que esto solo guarda en el navegador,
+// no en el servidor. No debe confundirse con "Mis documentos" todavía.
+// Cuando se está editando un EPUB existente, la clave incluye su
+// nombre para no mezclar su borrador con el de un documento nuevo.
+const claveBorradorActual = ref('borrador-escritura-nuevo');
+
+function guardarBorrador() {
+  localStorage.setItem(claveBorradorActual.value, JSON.stringify({ titulo: titulo.value, texto: texto.value }));
+  mensajeGuardado.value = 'Borrador guardado en este navegador (aún no se sincroniza con Documentos)';
+  setTimeout(() => (mensajeGuardado.value = ''), 4000);
+}
+
+function cargarBorradorLocal() {
+  const guardado = localStorage.getItem(claveBorradorActual.value);
+  if (guardado) {
+    const datos = JSON.parse(guardado);
+    titulo.value = datos.titulo || '';
+    texto.value = datos.texto || '';
+    nextTick(pintarTextoInicial);
+  }
+}
+
+// Inserta el marcador de formato correspondiente alrededor del texto
+// que el usuario tiene seleccionado (mismo patrón que un editor tipo
+// Markdown). Como esto pasa de un clic, no mientras se escribe, se
+// puede repintar todo el editor sin riesgo de interrumpir al usuario.
+function insertarFormato(tipo) {
+  const el = contenidoRef.value;
+  if (!el) return;
+
+  const { inicio, fin } = obtenerRangoSeleccionado(el);
+  const seleccionado = texto.value.substring(inicio, fin);
+  let nuevoTexto = texto.value;
+  let segmentoInsertado = seleccionado; // el texto que reemplaza a la selección
+
+  switch (tipo) {
+    case 'bold':
+      segmentoInsertado = '**' + seleccionado + '**';
+      break;
+    case 'italic':
+      segmentoInsertado = '*' + seleccionado + '*';
+      break;
+    case 'strikethrough':
+      segmentoInsertado = '~~' + seleccionado + '~~';
+      break;
+    case 'h1':
+      segmentoInsertado = '# ' + seleccionado;
+      break;
+    case 'h2':
+      segmentoInsertado = '## ' + seleccionado;
+      break;
+    case 'bullet':
+      segmentoInsertado = '• ' + seleccionado;
+      break;
+    case 'table':
+      segmentoInsertado = '\n| Columna 1 | Columna 2 | Columna 3 |\n|---|---|---|\n| Dato 1 | Dato 2 | Dato 3 |\n';
+      break;
+  }
+
+  nuevoTexto = texto.value.slice(0, inicio) + segmentoInsertado + texto.value.slice(fin);
+  // El cursor queda justo después de lo que se acaba de insertar
+  const posicionCursorFinal = inicio + segmentoInsertado.length;
+
+  texto.value = nuevoTexto;
+  nextTick(() => {
+    pintarTextoInicial();
+    el.focus();
+    establecerPosicionCursor(el, posicionCursorFinal);
+  });
+  revisarOrtografia();
+}
+
+// ===== Corrector ortográfico =====
+
+const errores = ref([]);
+const revisando = ref(false);
+const palabrasIgnoradas = ref(new Set());
+
+let temporizadorDebounce = null;
+
+// Se llama en cada tecla que se presiona dentro del editor. A
+// propósito NO toca el HTML del editor aquí (eso movería el cursor);
+// solo lee el texto plano que el navegador ya escribió de forma
+// nativa, y programa la revisión 600ms después de la última tecla.
+function alEscribir() {
+  const el = contenidoRef.value;
+  texto.value = el.textContent;
+
+  // Los errores mostrados en la lista de abajo corresponden al texto
+  // de la última revisión, que ya quedó desactualizada apenas se
+  // escribió algo más — se limpian para no mostrar sugerencias que
+  // ya no aplican, hasta que llegue una revisión fresca.
+  errores.value = [];
+
+  clearTimeout(temporizadorDebounce);
+  temporizadorDebounce = setTimeout(revisarOrtografia, 600);
+}
+
+// Si el usuario escribe rápido, se pueden mandar varias peticiones de
+// revisión casi seguidas. Como la red no garantiza que las respuestas
+// lleguen en el mismo orden en que se enviaron, una respuesta "vieja"
+// podría llegar DESPUÉS de la más reciente y pisarla con datos que ya
+// no aplican. Por eso cada petición lleva un número de turno: al
+// regresar, solo se usa su resultado si sigue siendo la más reciente.
+let numeroDeTurno = 0;
+
+async function revisarOrtografia() {
+  const miTurno = ++numeroDeTurno;
+
+  if (texto.value.trim().length === 0) {
+    errores.value = [];
+    return;
+  }
+
+  revisando.value = true;
+
+  try {
+    const token = localStorage.getItem('token');
+    const respuesta = await axios.post(
+      'http://localhost:3000/api/escritura/revisar',
+      { texto: texto.value },
+      { headers: { Authorization: `Bearer ${token}` } }
+    );
+
+    if (miTurno !== numeroDeTurno) return; // ya quedó obsoleta, se ignora
+
+    errores.value = respuesta.data.errores.filter(
+      (error) => !palabrasIgnoradas.value.has(error.palabra.toLowerCase())
+    );
+
+    // Recién aquí, con errores ya calculados sobre el texto actual
+    // (y con el usuario presumiblemente en pausa, no a media tecla),
+    // se repinta el editor con los subrayados — sin mover el cursor.
+    repintarManteniendoCursor();
+  } catch (error) {
+    console.error('No se pudo revisar el texto:', error);
+    // Visible en pantalla, no solo en la consola, para no depender de
+    // que alguien abra las herramientas de desarrollador para notarlo
+    mensajeGuardado.value = 'No se pudo conectar con el corrector ortográfico.';
+    setTimeout(() => (mensajeGuardado.value = ''), 5000);
+  } finally {
+    if (miTurno === numeroDeTurno) {
+      revisando.value = false;
+    }
+  }
+}
+
+// Reemplaza esa palabra específica (por su posición) con la sugerencia
+// elegida desde la lista de errores
+function aplicarSugerencia(error, sugerencia) {
   texto.value =
     texto.value.slice(0, error.posicion) +
     sugerencia +
     texto.value.slice(error.posicion + error.palabra.length);
 
-  palabraSeleccionada.value = null;
+  errores.value = errores.value.filter((e) => e !== error);
+
+  nextTick(() => {
+    const el = contenidoRef.value;
+    pintarTextoInicial();
+    el.focus();
+    establecerPosicionCursor(el, error.posicion + sugerencia.length);
+  });
+
   revisarOrtografia();
 }
 
-function ignorarPalabra() {
-  palabrasIgnoradas.value.add(palabraSeleccionada.value.palabra.toLowerCase());
-  errores.value = errores.value.filter((e) => e.palabra !== palabraSeleccionada.value.palabra);
-  palabraSeleccionada.value = null;
+function ignorarPalabra(error) {
+  palabrasIgnoradas.value.add(error.palabra.toLowerCase());
+  errores.value = errores.value.filter((e) => e !== error);
+
+  nextTick(() => {
+    const el = contenidoRef.value;
+    const posicionCursor = obtenerPosicionCursor(el);
+    pintarTextoInicial();
+    establecerPosicionCursor(el, posicionCursor);
+  });
 }
 </script>
 
 <style scoped>
-.editor-envoltura {
-  position: relative;
+.editor-widget {
+  max-width: 900px;
+  margin: 0 auto;
 }
 
+/* ---- Barra superior ---- */
+.tarjeta-barra {
+  background: var(--color-tarjeta);
+  border-radius: var(--radio-tarjeta);
+  padding: 1rem;
+  margin-bottom: 1rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.8rem;
+  align-items: center;
+}
+
+.input-titulo {
+  flex: 1;
+  min-width: 180px;
+  border: none;
+  font-size: 1.2rem;
+  padding: 0.4rem;
+}
+
+.input-titulo:focus {
+  outline: none;
+  border-bottom: 2px solid var(--color-primario);
+}
+
+.select-plantilla {
+  padding: 0.5rem 0.8rem;
+  border-radius: 10px;
+  border: 1px solid var(--color-borde);
+}
+
+.btn-guardar {
+  background-color: var(--color-primario);
+  color: white;
+  border: none;
+  border-radius: var(--radio-boton);
+  padding: 0.5rem 1.1rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.btn-guardar:hover {
+  background-color: var(--color-primario-hover);
+}
+
+.mensaje-guardado {
+  font-size: 0.85rem;
+  color: var(--color-texto-secundario);
+  margin: -0.5rem 0 1rem 0.3rem;
+}
+
+/* ---- Barra de formato ---- */
+.tarjeta-formato {
+  background: var(--color-tarjeta);
+  border-radius: var(--radio-tarjeta);
+  padding: 0.6rem 1rem;
+  margin-bottom: 1rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.8rem;
+  align-items: center;
+}
+
+.grupo-formato {
+  display: flex;
+  gap: 0.3rem;
+  border-right: 1px solid var(--color-borde);
+  padding-right: 0.8rem;
+}
+
+.btn-formato {
+  width: 34px;
+  height: 34px;
+  border-radius: 8px;
+  border: 1px solid transparent;
+  background: none;
+  cursor: pointer;
+  font-size: 0.9rem;
+}
+
+.btn-formato:hover {
+  background: #f0f0e8;
+}
+
+.btn-formato.activo {
+  background: var(--color-primario);
+  color: white;
+}
+
+/* ---- Editor ---- */
 .editor-textarea {
   width: 100%;
-  min-height: 300px;
-  padding: 1rem;
-  border: 1px solid #ccc;
-  border-radius: 8px;
-  background: transparent;
-  color: transparent;
-  caret-color: black;
-  position: relative;
-  z-index: 2;
+  min-height: 350px;
+  padding: 1.5rem;
+  border: 1px solid var(--color-borde);
+  border-radius: var(--radio-tarjeta);
+  background: white;
   font: inherit;
   line-height: 1.6;
-  resize: vertical;
+  box-sizing: border-box;
+  white-space: pre-wrap; /* respeta espacios y saltos de línea, igual que un textarea */
+  word-wrap: break-word;
 }
 
-.editor-resaltado {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  min-height: 300px;
-  padding: 1rem;
-  z-index: 1;
-  line-height: 1.6;
-  white-space: pre-wrap;
+.editor-textarea:focus {
+  outline: 2px solid var(--color-primario);
+  border-color: var(--color-primario);
+}
+
+/* Placeholder: como un contenteditable no tiene el atributo
+   "placeholder" de un input/textarea, se simula con CSS mostrando
+   el texto de data-placeholder solo cuando el editor está vacío */
+.editor-textarea:empty:before {
+  content: attr(data-placeholder);
+  color: #999;
   pointer-events: none;
 }
 
-.editor-resaltado :deep(.palabra-error) {
+/* El subrayado de las palabras con error. Van con :deep() porque
+   estos <span> los inserta JavaScript directamente (innerHTML), no
+   Vue a través del template — por eso no tienen el atributo especial
+   que usan los estilos "scoped" para saber a qué aplicarse. */
+.editor-textarea :deep(.palabra-error) {
   text-decoration: underline wavy #e53e3e;
   text-decoration-thickness: 2px;
-  pointer-events: auto;
-  cursor: pointer;
 }
 
 .editor-estado {
   margin-top: 0.5rem;
   font-size: 0.9rem;
-  color: #666;
+  color: var(--color-texto-secundario);
 }
 
-.menu-sugerencias {
-  position: fixed;
-  background: white;
-  border: 1px solid #ccc;
-  border-radius: 8px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
-  padding: 0.5rem;
-  z-index: 10;
-  min-width: 150px;
+/* ---- Lista de errores (reemplaza el subrayado sobre el texto) ---- */
+.lista-errores {
+  margin-top: 1rem;
+  background: var(--color-tarjeta);
+  border-radius: var(--radio-tarjeta);
+  padding: 1rem 1.2rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
 }
 
-.menu-titulo {
-  font-weight: bold;
-  margin-bottom: 0.25rem;
+.titulo-lista-errores {
+  font-weight: 600;
+  margin-bottom: 0.6rem;
+  color: var(--color-texto-secundario);
+  font-size: 0.9rem;
 }
 
-.menu-sugerencias ul {
-  list-style: none;
-  padding: 0;
-  margin: 0;
+.fila-error {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.5rem 0;
+  border-top: 1px solid var(--color-borde);
 }
 
-.menu-sugerencias li {
-  padding: 0.4rem;
+.fila-error:first-of-type {
+  border-top: none;
+}
+
+.palabra-con-error {
+  text-decoration: underline wavy #e53e3e;
+  text-decoration-thickness: 2px;
+  font-weight: 600;
+  min-width: 100px;
+}
+
+.sugerencias-error {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.btn-sugerencia {
+  background: #f0f4e8;
+  border: 1px solid var(--color-borde);
+  border-radius: var(--radio-boton);
+  padding: 0.3rem 0.8rem;
+  font-size: 0.85rem;
   cursor: pointer;
-  border-radius: 4px;
 }
 
-.menu-sugerencias li:hover {
-  background: #f0f0f0;
+.btn-sugerencia:hover {
+  background: var(--color-primario);
+  color: white;
+  border-color: var(--color-primario);
 }
 
-.menu-sin-sugerencias {
-  color: #999;
+.sin-sugerencias {
+  font-size: 0.85rem;
+  color: var(--color-texto-secundario);
   font-style: italic;
-  cursor: default !important;
 }
 
-.menu-ignorar {
-  margin-top: 0.5rem;
-  width: 100%;
-  padding: 0.3rem;
-  border: none;
-  background: #eee;
-  border-radius: 4px;
+.btn-ignorar {
+  background: none;
+  border: 1px solid var(--color-borde);
+  border-radius: 50%;
+  width: 26px;
+  height: 26px;
   cursor: pointer;
+  color: var(--color-texto-secundario);
+  font-size: 0.8rem;
+}
+
+.btn-ignorar:hover {
+  background: #fdecea;
+  color: #c0392b;
+  border-color: #c0392b;
+}
+
+/* ===== Responsivo: pantallas angostas (celular) ===== */
+@media (max-width: 640px) {
+  .tarjeta-barra {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .select-plantilla,
+  .btn-guardar {
+    width: 100%;
+  }
+
+  .tarjeta-formato {
+    justify-content: center;
+  }
+
+  .grupo-formato {
+    border-right: none;
+    padding-right: 0;
+  }
+
+  .editor-textarea {
+    padding: 1rem;
+  }
 }
 </style>
