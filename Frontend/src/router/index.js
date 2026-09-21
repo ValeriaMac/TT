@@ -10,7 +10,8 @@ import Lector from '../vistas/Lector.vue';
 import ConfiguracionVisual from '../vistas/ConfiguracionVisual.vue';
 import Escritura from '../vistas/Escritura.vue';
 import MisDocumentos from '../componentes/MisDocumentos.vue';
-import Perfil from '../vistas/Perfil.vue'; // 👈 NUEVO
+import Perfil from '../vistas/Perfil.vue';       // 👈 NUEVO
+import Progreso from '../vistas/Progreso.vue';   // 👈 NUEVO
 
 const rutas = [
     {
@@ -70,6 +71,12 @@ const rutas = [
         path: '/perfil',
         name: 'perfil',
         component: Perfil,
+        meta: { requiereAutenticacion: true },
+    },
+    {
+        path: '/progreso',
+        name: 'progreso',
+        component: Progreso,
         meta: { requiereAutenticacion: true },
     },
 ];

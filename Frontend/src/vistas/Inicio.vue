@@ -74,15 +74,25 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue';
+import { ref, computed, onMounted } from 'vue';
 import { useAuthStore } from '@/store/auth.store';
+import { useProgresoStore } from '@/store/progreso.store';
 import ModalDonacion from '@/componentes/ModalDonacion.vue';
 
 const authStore = useAuthStore();
+const progresoStore = useProgresoStore();
 
-// TEMPORAL: valores fijos en lo que se construye el módulo de Progreso/Insignias.
-const puntosTotales = ref(0);
-const rachaActual = ref(0);
+onMounted(() => {
+  if (!progresoStore.cargado) {
+    progresoStore.cargarProgreso();
+  }
+});
+
+// Ya no son valores fijos: vienen del backend real (tabla progreso_general)
+const puntosTotales = computed(() => progresoStore.puntosTotales);
+const rachaActual = computed(() => progresoStore.rachaActual);
+
+// Las insignias siguen pendientes (todavía no hay endpoint para esas)
 const insigniasRecientes = ref([]); // ej: [{ id: 1, emoji: '✨' }]
 
 // Igual que en Dashboard.tsx: el progreso del nivel actual es el
