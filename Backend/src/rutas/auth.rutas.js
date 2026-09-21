@@ -1,10 +1,21 @@
 // auth.rutas.js
 const express = require('express');
 const router = express.Router();
-const { registrarUsuario, iniciarSesion, obtenerPerfil } = require('../controladores/auth.controlador');
+const {
+    registrarUsuario,
+    iniciarSesion,
+    obtenerPerfil,
+    actualizarNombre,
+    cambiarContrasena,
+    eliminarCuenta,
+} = require('../controladores/auth.controlador');
 const verificarToken = require('../middlewares/auth.middleware');
+
 router.post('/registro', registrarUsuario);
 router.post('/login', iniciarSesion);
-router.get('/perfil', verificarToken, obtenerPerfil); // protegida
+router.get('/perfil', verificarToken, obtenerPerfil);
+router.put('/perfil', verificarToken, actualizarNombre);
+router.put('/perfil/contrasena', verificarToken, cambiarContrasena);
+router.delete('/perfil', verificarToken, eliminarCuenta);
 
 module.exports = router;

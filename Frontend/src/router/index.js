@@ -10,6 +10,7 @@ import Lector from '../vistas/Lector.vue';
 import ConfiguracionVisual from '../vistas/ConfiguracionVisual.vue';
 import Escritura from '../vistas/Escritura.vue';
 import MisDocumentos from '../componentes/MisDocumentos.vue';
+import Perfil from '../vistas/Perfil.vue'; // 👈 NUEVO
 
 const rutas = [
     {
@@ -63,6 +64,12 @@ const rutas = [
         path: '/escritura',
         name: 'escritura',
         component: Escritura,
+        meta: { requiereAutenticacion: true },
+    },
+    {
+        path: '/perfil',
+        name: 'perfil',
+        component: Perfil,
         meta: { requiereAutenticacion: true },
     },
 ];

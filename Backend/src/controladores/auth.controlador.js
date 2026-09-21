@@ -150,4 +150,132 @@ async function obtenerPerfil(req, res) {
     }
 }
 
-module.exports = { registrarUsuario, iniciarSesion, obtenerPerfil };
+// PUT /api/auth/perfil (protegida) — cambiar el nombre
+async function actualizarNombre(req, res) {
+    try {
+        const { nombre } = req.body;
+
+        if (!nombre || nombre.trim().length === 0) {
+            return res.status(400).json({ mensaje: 'El nombre no puede estar vacío' });
+        }
+
+        const { data, error } = await supabase
+            .from('usuarios')
+            .update({ nombre: nombre.trim() })
+            .eq('id', req.usuarioId)
+            .select('id, nombre, correo')
+            .single();
+
+        if (error) throw error;
+
+        res.json({ mensaje: 'Nombre actualizado correctamente', usuario: data });
+
+    } catch (error) {
+        console.error('Error al actualizar el nombre:', error);
+        res.status(500).json({ mensaje: 'Error interno del servidor' });
+    }
+}
+
+// PUT /api/auth/perfil/contrasena (protegida)
+async function cambiarContrasena(req, res) {
+    try {
+        const { contrasenaActual, contrasenaNueva } = req.body;
+
+        if (!contrasenaActual || !contrasenaNueva) {
+            return res.status(400).json({ mensaje: 'Faltan campos obligatorios' });
+        }
+
+        const regexContrasena = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/;
+        if (!regexContrasena.test(contrasenaNueva)) {
+            return res.status(400).json({
+                mensaje: 'La nueva contraseña debe tener mínimo 8 caracteres, una mayúscula, una minúscula y un número'
+            });
+        }
+
+        const { data: usuario, error: errorBuscar } = await supabase
+            .from('usuarios')
+            .select('contrasena_hash')
+            .eq('id', req.usuarioId)
+            .single();
+
+        if (errorBuscar || !usuario) {
+            return res.status(404).json({ mensaje: 'Usuario no encontrado' });
+        }
+
+        const contrasenaValida = await bcrypt.compare(contrasenaActual, usuario.contrasena_hash);
+        if (!contrasenaValida) {
+            return res.status(401).json({ mensaje: 'La contraseña actual es incorrecta' });
+        }
+
+        const nuevoHash = await bcrypt.hash(contrasenaNueva, 10);
+
+        const { error: errorActualizar } = await supabase
+            .from('usuarios')
+            .update({ contrasena_hash: nuevoHash })
+            .eq('id', req.usuarioId);
+
+        if (errorActualizar) throw errorActualizar;
+
+        res.json({ mensaje: 'Contraseña actualizada correctamente' });
+
+    } catch (error) {
+        console.error('Error al cambiar la contraseña:', error);
+        res.status(500).json({ mensaje: 'Error interno del servidor' });
+    }
+}
+
+// DELETE /api/auth/perfil (protegida)
+//
+// IMPORTANTE: esto borra la fila del usuario en "usuarios". Si las
+// tablas relacionadas (configuracion_visual, progreso_general,
+// documentos, plantillas, etc.) no tienen configurado ON DELETE
+// CASCADE en Supabase, esas filas se quedarían huérfanas en vez de
+// borrarse. Vale la pena confirmar eso directo en Supabase
+// (Database > relaciones de la tabla usuarios) antes de dar esto
+// por completamente terminado.
+async function eliminarCuenta(req, res) {
+    try {
+        const { contrasena } = req.body;
+
+        if (!contrasena) {
+            return res.status(400).json({ mensaje: 'Debes confirmar tu contraseña' });
+        }
+
+        const { data: usuario, error: errorBuscar } = await supabase
+            .from('usuarios')
+            .select('contrasena_hash')
+            .eq('id', req.usuarioId)
+            .single();
+
+        if (errorBuscar || !usuario) {
+            return res.status(404).json({ mensaje: 'Usuario no encontrado' });
+        }
+
+        const contrasenaValida = await bcrypt.compare(contrasena, usuario.contrasena_hash);
+        if (!contrasenaValida) {
+            return res.status(401).json({ mensaje: 'La contraseña es incorrecta' });
+        }
+
+        const { error: errorEliminar } = await supabase
+            .from('usuarios')
+            .delete()
+            .eq('id', req.usuarioId);
+
+        if (errorEliminar) throw errorEliminar;
+
+        res.json({ mensaje: 'Cuenta eliminada correctamente' });
+
+    } catch (error) {
+        console.error('Error al eliminar la cuenta:', error);
+        res.status(500).json({ mensaje: 'Error interno del servidor' });
+    }
+}
+
+module.exports = {
+    registrarUsuario,
+    iniciarSesion,
+    obtenerPerfil,
+    actualizarNombre,
+    cambiarContrasena,
+    eliminarCuenta,
+};

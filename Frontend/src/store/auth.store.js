@@ -24,6 +24,30 @@ export const useAuthStore = defineStore('auth', {
             return respuesta.data;
         },
 
+        async actualizarNombre(nombre) {
+            const respuesta = await api.put('/auth/perfil', { nombre });
+            // Se actualiza también lo que ya está guardado en el store,
+            // para que el nombre nuevo aparezca de inmediato en toda la app
+            // (por ejemplo, el saludo del Dashboard)
+            this.usuario = { ...this.usuario, ...respuesta.data.usuario };
+            localStorage.setItem('usuario', JSON.stringify(this.usuario));
+            return respuesta.data;
+        },
+
+        async cambiarContrasena(contrasenaActual, contrasenaNueva) {
+            const respuesta = await api.put('/auth/perfil/contrasena', {
+                contrasenaActual,
+                contrasenaNueva,
+            });
+            return respuesta.data;
+        },
+
+        async eliminarCuenta(contrasena) {
+            const respuesta = await api.delete('/auth/perfil', { data: { contrasena } });
+            this.cerrarSesion();
+            return respuesta.data;
+        },
+
         guardarSesion(usuario, token) {
             this.usuario = usuario;
             this.token = token;
