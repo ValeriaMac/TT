@@ -79,17 +79,26 @@ async function obtenerPreguntasAtrapaError(req, res) {
 
         const progreso = await determinarNivelYSubnivel(req.usuarioId, ejercicio.id);
 
+        // Se ordena por id para que el reparto por subnivel sea siempre
+        // el mismo bloque (no cambia entre peticiones)
         const { data: preguntas, error: errorPreguntas } = await supabase
             .from('banco_preguntas')
             .select('id, enunciado')
-            .eq('nivel_id', progreso.nivelId);
+            .eq('nivel_id', progreso.nivelId)
+            .order('id', { ascending: true });
 
         if (errorPreguntas) throw errorPreguntas;
 
-        // Se revuelve TODO el banco del nivel y se toman solo 5, para que
-        // cada intento muestre una selección distinta (y no siempre las
-        // mismas 5 en el mismo orden)
-        const seleccionAleatoria = revolver(preguntas).slice(0, CANTIDAD_POR_RONDA);
+        // Cada subnivel tiene su propio bloque de 5 oraciones, exclusivo
+        // y sin cruzarse con los demás subniveles de este mismo nivel.
+        // Ej.: con 25 preguntas y 5 por subnivel: subnivel 1 = posiciones
+        // 0-4, subnivel 2 = posiciones 5-9, subnivel 3 = 10-14, etc.
+        const inicioBloque = (progreso.subnivel - 1) * CANTIDAD_POR_RONDA;
+        const bloqueDelSubnivel = preguntas.slice(inicioBloque, inicioBloque + CANTIDAD_POR_RONDA);
+
+        // Dentro de ese bloque fijo, sí se revuelve el ORDEN en que
+        // aparecen, para que no se sientan siempre iguales al reintentar
+        const seleccionAleatoria = revolver(bloqueDelSubnivel);
 
         res.json({
             nivelId: progreso.nivelId,
