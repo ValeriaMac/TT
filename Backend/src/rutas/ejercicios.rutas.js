@@ -1,12 +1,15 @@
 const express = require('express');
 const router = express.Router();
-const {
-    obtenerPreguntasAtrapaError,
-    verificarRespuestaAtrapaError,
-} = require('../controladores/ejercicios.controlador');
 const verificarToken = require('../middlewares/auth.middleware');
 
-router.get('/atrapa-error', verificarToken, obtenerPreguntasAtrapaError);
-router.post('/atrapa-error/verificar', verificarToken, verificarRespuestaAtrapaError);
+const atrapaError = require('../controladores/atrapaError.controlador');
+const cronometro = require('../controladores/cronometro.controlador');
+
+// Atrapa el error (CU-EJ-03)
+router.get('/atrapa-error', verificarToken, atrapaError.obtenerPreguntas);
+router.post('/atrapa-error/verificar', verificarToken, atrapaError.verificarRespuesta);
+
+// Cronómetro (CU-EJ-02)
+router.get('/cronometro', verificarToken, cronometro.obtenerLectura);
 
 module.exports = router;

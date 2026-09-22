@@ -13,7 +13,8 @@ import MisDocumentos from '../componentes/MisDocumentos.vue';
 import Perfil from '../vistas/Perfil.vue';       // 👈 NUEVO
 import Progreso from '../vistas/Progreso.vue';
 import Ejercicios from '../vistas/Ejercicios.vue';       // 👈 NUEVO
-import AtrapaElError from '../vistas/AtrapaElError.vue'; // 👈 NUEVO
+import AtrapaElError from '../vistas/AtrapaElError.vue';
+import Cronometro from '../vistas/Cronometro.vue'; // 👈 NUEVO
 
 const rutas = [
     {
@@ -91,6 +92,12 @@ const rutas = [
         path: '/ejercicios/atrapa-error',
         name: 'atrapa-error',
         component: AtrapaElError,
+        meta: { requiereAutenticacion: true },
+    },
+    {
+        path: '/ejercicios/cronometro',
+        name: 'cronometro',
+        component: Cronometro,
         meta: { requiereAutenticacion: true },
     },
 ];

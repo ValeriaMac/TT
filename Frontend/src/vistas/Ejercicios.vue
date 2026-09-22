@@ -22,7 +22,9 @@
             <p>Velocidad de lectura</p>
           </div>
         </div>
-        <p class="ejercicio-item deshabilitado">Cronómetro de lectura — Próximamente</p>
+        <router-link to="/ejercicios/cronometro" class="ejercicio-item ejercicio-activo">
+          Cronómetro de lectura →
+        </router-link>
       </div>
 
       <div class="tarjeta-categoria">
