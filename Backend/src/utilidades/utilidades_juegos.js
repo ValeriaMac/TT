@@ -68,4 +68,16 @@ async function determinarNivelYSubnivel(usuarioId, ejercicioId, puntosMaximosPor
     };
 }
 
-module.exports = { revolver, determinarNivelYSubnivel, SUBNIVELES_POR_NIVEL };
+// Reparte una lista de contenido (preguntas, tarjetas, lecturas...) en
+// bloques exclusivos por subnivel, y regresa el bloque que le toca al
+// subnivel actual, YA revuelto. El tamaño del bloque se calcula solo
+// según cuánto contenido haya (no hace falta que cada ejercicio tenga
+// exactamente el mismo número de elementos).
+function obtenerBloqueDelSubnivel(items, subnivel, subnivelesPorNivel = SUBNIVELES_POR_NIVEL) {
+    const tamanoBloque = Math.floor(items.length / subnivelesPorNivel) || 1;
+    const inicio = (subnivel - 1) * tamanoBloque;
+    const bloque = items.slice(inicio, inicio + tamanoBloque);
+    return revolver(bloque);
+}
+
+module.exports = { revolver, determinarNivelYSubnivel, obtenerBloqueDelSubnivel, SUBNIVELES_POR_NIVEL };

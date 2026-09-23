@@ -48,7 +48,9 @@
             <p>Letras similares</p>
           </div>
         </div>
-        <p class="ejercicio-item deshabilitado">Tarjetas de letras — Próximamente</p>
+        <router-link to="/ejercicios/tarjetas" class="ejercicio-item ejercicio-activo">
+          Tarjetas de letras →
+        </router-link>
         <p class="ejercicio-item deshabilitado">Lluvia de letras — Próximamente</p>
       </div>
     </div>

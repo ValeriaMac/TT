@@ -14,7 +14,8 @@ import Perfil from '../vistas/Perfil.vue';       // 👈 NUEVO
 import Progreso from '../vistas/Progreso.vue';
 import Ejercicios from '../vistas/Ejercicios.vue';       // 👈 NUEVO
 import AtrapaElError from '../vistas/AtrapaElError.vue';
-import Cronometro from '../vistas/Cronometro.vue'; // 👈 NUEVO
+import Cronometro from '../vistas/Cronometro.vue';
+import Tarjetas from '../vistas/Tarjetas.vue'; // 👈 NUEVO
 
 const rutas = [
     {
@@ -98,6 +99,12 @@ const rutas = [
         path: '/ejercicios/cronometro',
         name: 'cronometro',
         component: Cronometro,
+        meta: { requiereAutenticacion: true },
+    },
+    {
+        path: '/ejercicios/tarjetas',
+        name: 'tarjetas',
+        component: Tarjetas,
         meta: { requiereAutenticacion: true },
     },
 ];
