@@ -1,6 +1,15 @@
 <template>
   <div class="pagina-degradada">
-    <div class="tarjeta-auth tarjeta-ancha">
+    <div class="tarjeta-auth tarjeta-ancha" v-if="cuentaCreada">
+      <div class="estado-confirmacion">
+        <div class="icono-correo">✉️</div>
+        <h2>¡Ya casi!</h2>
+        <p class="descripcion">{{ mensajeExito }}</p>
+        <router-link to="/login" class="btn-primario btn-enlace">Ir a iniciar sesión</router-link>
+      </div>
+    </div>
+
+    <div class="tarjeta-auth tarjeta-ancha" v-else>
       <div class="encabezado-auth">
         <h1 class="logo">lex</h1>
         <h2>Crear cuenta</h2>
@@ -74,6 +83,8 @@ const formulario = reactive({
 
 const cargando = ref(false);
 const mensajeError = ref('');
+const cuentaCreada = ref(false);
+const mensajeExito = ref('');
 
 // Calcula en el momento si la fecha ingresada corresponde a un menor de edad
 const esMenorDeEdad = computed(() => {
@@ -90,8 +101,11 @@ async function manejarRegistro() {
   mensajeError.value = '';
   cargando.value = true;
   try {
-    await authStore.registrar(formulario);
-    router.push('/inicio');
+    const respuesta = await authStore.registrar(formulario);
+    // Ya no entra directo a Inicio: falta confirmar el correo (y, si
+    // es menor, que el tutor confirme también)
+    mensajeExito.value = respuesta.mensaje;
+    cuentaCreada.value = true;
   } catch (error) {
     mensajeError.value = error.response?.data?.mensaje || 'Ocurrió un error al registrarte';
   } finally {
@@ -235,5 +249,41 @@ async function manejarRegistro() {
 
 .pie-auth a:hover {
   text-decoration: underline;
+}
+
+.estado-confirmacion {
+  text-align: center;
+}
+
+.icono-correo {
+  font-size: 3rem;
+  background: #f0f4e8;
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 1.5rem;
+}
+
+.estado-confirmacion h2 {
+  font-family: var(--fuente-encabezados);
+  font-size: 1.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.descripcion {
+  color: var(--color-texto-secundario);
+  font-size: 0.9rem;
+  line-height: 1.5;
+  margin-bottom: 1.5rem;
+}
+
+.btn-enlace {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
 }
 </style>

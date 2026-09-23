@@ -1,8 +1,57 @@
 const { createClient } = require('@supabase/supabase-js');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
+const crypto = require('crypto');
 
 const supabase = require('../config/supabase.cliente');
+const { enviarCorreo } = require('../utilidades/correo');
+
+async function enviarCorreoDeConfirmacion(usuario) {
+    const token = crypto.randomBytes(32).toString('hex');
+
+    await supabase
+        .from('usuarios')
+        .update({ token_verificacion: token })
+        .eq('id', usuario.id);
+
+    const enlace = `${process.env.FRONTEND_URL}/verificar-correo?token=${token}`;
+
+    await enviarCorreo({
+        para: usuario.correo,
+        asunto: '¡Bienvenido a lex! Confirma tu correo',
+        html: `
+            <p>Hola ${usuario.nombre},</p>
+            <p>Gracias por crear tu cuenta en lex. Confirma tu correo dando clic aquí:</p>
+            <p><a href="${enlace}">${enlace}</a></p>
+        `,
+    });
+}
+
+async function enviarCorreoAlTutor(usuario) {
+    const token = crypto.randomBytes(32).toString('hex');
+
+    await supabase
+        .from('usuarios')
+        .update({ token_tutor: token })
+        .eq('id', usuario.id);
+
+    const enlace = `${process.env.FRONTEND_URL}/confirmar-tutor?token=${token}`;
+
+    await enviarCorreo({
+        para: usuario.correo_tutor,
+        asunto: 'Se registró una cuenta de menor de edad en lex',
+        html: `
+            <p>Hola,</p>
+            <p>Te escribimos porque tu correo fue registrado como tutor de <strong>${usuario.nombre}</strong>,
+            quien acaba de crear una cuenta en lex, una aplicación de apoyo para personas con dislexia.</p>
+            <p>Como parte de nuestro compromiso con la protección de datos de menores (LGDNNA), te pedimos
+            confirmar que estás al tanto de este registro:</p>
+            <p><a href="${enlace}">${enlace}</a></p>
+            <p>Si no reconoces a esta persona o no autorizas el uso de tu correo con este fin,
+            por favor contáctanos.</p>
+        `,
+    });
+}
 
 function calcularEsMenorEdad(fechaNacimiento) {
     const hoy = new Date();
@@ -62,7 +111,7 @@ async function registrarUsuario(req, res) {
                 correo_tutor: correoTutor || null,
                 aviso_privacidad_aceptado: avisoPrivacidadAceptado || false,
             })
-            .select('id, nombre, correo, es_menor_edad')
+            .select('id, nombre, correo, es_menor_edad, correo_tutor')
             .single();
 
         if (errorInsertar) throw errorInsertar;
@@ -73,13 +122,26 @@ async function registrarUsuario(req, res) {
         // Progreso general en ceros
         await supabase.from('progreso_general').insert({ usuario_id: usuarioNuevo.id });
 
-        const token = jwt.sign({ id: usuarioNuevo.id }, process.env.JWT_SECRET, {
-            expiresIn: process.env.JWT_EXPIRA,
-        });
+        // Correo de confirmación al propio usuario (a todos, sean o no menores)
+        await enviarCorreoDeConfirmacion(usuarioNuevo);
 
+        // Si es menor de edad, además se le avisa al tutor — esto es
+        // justo el mecanismo que respalda la factibilidad legal
+        // documentada (LGDNNA Art. 76 y 101 Bis 2): el tutor se entera
+        // de que se usó su correo para registrar a un menor.
+        if (usuarioNuevo.es_menor_edad) {
+            await enviarCorreoAlTutor(usuarioNuevo);
+        }
+
+        // IMPORTANTE: ya NO se manda un token de sesión aquí. Si se
+        // mandara, confirmar el correo sería solo decorativo (el
+        // usuario ya podría usar la cuenta sin haber confirmado nada).
+        // Tiene que iniciar sesión después, y ahí sí se revisa que
+        // ya haya confirmado (ver iniciarSesion).
         res.status(201).json({
-            mensaje: 'Cuenta creada correctamente',
-            token,
+            mensaje: usuarioNuevo.es_menor_edad
+                ? 'Cuenta creada. Revisa tu correo para confirmarlo, y pídele a tu tutor que confirme el suyo también.'
+                : 'Cuenta creada. Revisa tu correo para confirmarlo antes de iniciar sesión.',
             usuario: usuarioNuevo,
         });
 
@@ -111,6 +173,22 @@ async function iniciarSesion(req, res) {
         const contrasenaValida = await bcrypt.compare(contrasena, usuario.contrasena_hash);
         if (!contrasenaValida) {
             return res.status(401).json({ mensaje: 'Correo o contraseña incorrectos' });
+        }
+
+        // Aquí es donde de verdad se exige la confirmación — sin esto,
+        // los correos que se mandan al registrarse no bloquean nada.
+        if (!usuario.correo_verificado) {
+            return res.status(403).json({
+                mensaje: 'Debes confirmar tu correo antes de iniciar sesión. Revisa tu bandeja de entrada.',
+                razon: 'correo_no_verificado',
+            });
+        }
+
+        if (usuario.es_menor_edad && !usuario.tutor_confirmo) {
+            return res.status(403).json({
+                mensaje: 'Tu tutor todavía no confirma tu cuenta. Pídele que revise el correo que le enviamos.',
+                razon: 'tutor_no_confirmo',
+            });
         }
 
         const token = jwt.sign({ id: usuario.id }, process.env.JWT_SECRET, {
@@ -271,6 +349,62 @@ async function eliminarCuenta(req, res) {
     }
 }
 
+// GET /api/auth/verificar-correo?token=X
+async function verificarCorreo(req, res) {
+    try {
+        const { token } = req.query;
+        if (!token) return res.status(400).json({ mensaje: 'Falta el token' });
+
+        const { data: usuario, error } = await supabase
+            .from('usuarios')
+            .select('id')
+            .eq('token_verificacion', token)
+            .maybeSingle();
+
+        if (error || !usuario) {
+            return res.status(400).json({ mensaje: 'El enlace no es válido o ya fue usado.' });
+        }
+
+        await supabase
+            .from('usuarios')
+            .update({ correo_verificado: true, token_verificacion: null })
+            .eq('id', usuario.id);
+
+        res.json({ mensaje: 'Correo verificado correctamente.' });
+    } catch (error) {
+        console.error('Error al verificar correo:', error);
+        res.status(500).json({ mensaje: 'Error interno del servidor' });
+    }
+}
+
+// GET /api/auth/confirmar-tutor?token=X
+async function confirmarTutor(req, res) {
+    try {
+        const { token } = req.query;
+        if (!token) return res.status(400).json({ mensaje: 'Falta el token' });
+
+        const { data: usuario, error } = await supabase
+            .from('usuarios')
+            .select('id, nombre')
+            .eq('token_tutor', token)
+            .maybeSingle();
+
+        if (error || !usuario) {
+            return res.status(400).json({ mensaje: 'El enlace no es válido o ya fue usado.' });
+        }
+
+        await supabase
+            .from('usuarios')
+            .update({ tutor_confirmo: true, token_tutor: null })
+            .eq('id', usuario.id);
+
+        res.json({ mensaje: `Confirmación registrada para la cuenta de ${usuario.nombre}.` });
+    } catch (error) {
+        console.error('Error al confirmar tutor:', error);
+        res.status(500).json({ mensaje: 'Error interno del servidor' });
+    }
+}
+
 module.exports = {
     registrarUsuario,
     iniciarSesion,
@@ -278,4 +412,6 @@ module.exports = {
     actualizarNombre,
     cambiarContrasena,
     eliminarCuenta,
+    verificarCorreo,
+    confirmarTutor,
 };

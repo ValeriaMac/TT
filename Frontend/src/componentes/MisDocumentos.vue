@@ -23,9 +23,33 @@
     <p v-if="cargando" class="mensaje-info">Subiendo archivo...</p>
     <p v-if="error" class="mensaje-error">{{ error }}</p>
 
-    <!-- Lista de documentos -->
-    <div v-if="epubsDisponibles.length > 0" class="grid-documentos">
-      <div v-for="epub in epubsDisponibles" :key="epub.name" class="tarjeta-documento">
+    <!-- Lista de documentos: primero los de texto, luego los EPUB -->
+    <div v-if="documentosTexto.length > 0 || epubsDisponibles.length > 0" class="grid-documentos">
+      <!-- Documentos de texto creados/editados en Escritura -->
+      <div v-for="doc in documentosTexto" :key="'texto-' + doc.id" class="tarjeta-documento">
+        <div class="encabezado-tarjeta">
+          <div class="icono-documento">✎</div>
+          <div class="info-documento">
+            <p class="titulo-documento">{{ doc.titulo }}</p>
+            <p class="subtitulo-documento">Creado</p>
+            <p class="fecha-documento">{{ formatearFecha(doc.fecha_actualizacion) }}</p>
+          </div>
+        </div>
+
+        <p class="descripcion-documento">Documento de texto</p>
+
+        <div class="acciones-documento">
+          <button class="btn-accion" @click="editarDocumentoTexto(doc.id)">
+            ✎ Editar
+          </button>
+          <button class="btn-eliminar" @click="eliminarDocumentoTexto(doc.id)">
+            🗑
+          </button>
+        </div>
+      </div>
+
+      <!-- Archivos EPUB subidos -->
+      <div v-for="epub in epubsDisponibles" :key="'epub-' + epub.name" class="tarjeta-documento">
         <div class="encabezado-tarjeta">
           <div class="icono-documento">📄</div>
           <div class="info-documento">
@@ -69,7 +93,8 @@
 
 <script setup>
 import { ref, onMounted } from 'vue'
-import axios from 'axios'
+import axios from 'axios' // solo para la subida de archivos (multipart), el resto usa "api"
+import api from '@/servicios/api'
 import { useRouter } from 'vue-router'
 
 const router = useRouter()
@@ -78,6 +103,7 @@ const archivo = ref(null)
 const cargando = ref(false)
 const error = ref(null)
 const epubsDisponibles = ref([])
+const documentosTexto = ref([])
 const inputArchivo = ref(null)
 
 const formatearFecha = (fecha) => {
@@ -108,11 +134,17 @@ const subirArchivo = async () => {
     const formData = new FormData()
     formData.append('epub', archivo.value)
 
+    // Este endpoint necesita "multipart/form-data", por eso usa axios
+    // directo en vez del cliente "api" — pero sí toma el token de la
+    // sesión, igual que los demás
     await axios.post('http://localhost:3000/api/lector/subir', formData, {
-      headers: { 'Content-Type': 'multipart/form-data' }
+      headers: {
+        'Content-Type': 'multipart/form-data',
+        Authorization: `Bearer ${localStorage.getItem('token')}`,
+      }
     })
 
-    await cargarLista()
+    await cargarListaEpubs()
   } catch (err) {
     error.value = 'Error al subir el archivo. Intenta de nuevo.'
   } finally {
@@ -120,39 +152,59 @@ const subirArchivo = async () => {
   }
 }
 
-const cargarLista = async () => {
+const cargarListaEpubs = async () => {
   try {
-    const respuesta = await axios.get('http://localhost:3000/api/lector/lista')
+    const respuesta = await api.get('/lector/lista')
     epubsDisponibles.value = respuesta.data.archivos
   } catch (err) {
     error.value = 'Error al cargar la lista de archivos.'
   }
 }
 
+const cargarDocumentosTexto = async () => {
+  try {
+    const respuesta = await api.get('/documentos')
+    documentosTexto.value = respuesta.data.documentos
+  } catch (err) {
+    error.value = 'Error al cargar tus documentos de texto.'
+  }
+}
+
 const abrirEpub = (nombre) => {
-  // Navega a /lectura con el nombre del archivo en la URL; Lector.vue
-  // se encarga de resolver la URL real y abrir el libro
   router.push({ path: '/lectura', query: { epub: nombre } })
 }
 
 const editarEpub = (nombre) => {
-  // Igual que abrirEpub, pero hacia /escritura: Editor.vue extrae el
-  // texto del EPUB y lo carga en el editor
   router.push({ path: '/escritura', query: { epub: nombre } })
+}
+
+const editarDocumentoTexto = (id) => {
+  router.push({ path: '/escritura', query: { documentoId: id } })
 }
 
 const eliminarEpub = async (nombre) => {
   if (!confirm(`¿Seguro que quieres eliminar "${nombre}"?`)) return
   try {
-    await axios.delete(`http://localhost:3000/api/lector/eliminar/${nombre}`)
-    await cargarLista()
+    await api.delete(`/lector/eliminar/${nombre}`)
+    await cargarListaEpubs()
   } catch (err) {
     error.value = 'Error al eliminar el archivo.'
   }
 }
 
+const eliminarDocumentoTexto = async (id) => {
+  if (!confirm('¿Seguro que quieres eliminar este documento?')) return
+  try {
+    await api.delete(`/documentos/${id}`)
+    await cargarDocumentosTexto()
+  } catch (err) {
+    error.value = 'Error al eliminar el documento.'
+  }
+}
+
 onMounted(() => {
-  cargarLista()
+  cargarListaEpubs()
+  cargarDocumentosTexto()
 })
 </script>
 

@@ -4,7 +4,10 @@ import { useAuthStore } from '../store/auth.store';
 import Landing from '../vistas/Landing.vue';                  // 👈 NUEVO — página pública
 import Login from '../vistas/Login.vue';
 import Registro from '../vistas/Registro.vue';
-import RecuperarContrasena from '../vistas/RecuperarContrasena.vue'; // 👈 NUEVO
+import RecuperarContrasena from '../vistas/RecuperarContrasena.vue';
+import ConfirmarRecuperacion from '../vistas/ConfirmarRecuperacion.vue';
+import VerificarCorreo from '../vistas/VerificarCorreo.vue';   // 👈 NUEVO
+import ConfirmarTutor from '../vistas/ConfirmarTutor.vue';     // 👈 NUEVO
 import Inicio from '../vistas/Inicio.vue';                    // 👈 NUEVO — dashboard
 import Lector from '../vistas/Lector.vue';
 import ConfiguracionVisual from '../vistas/ConfiguracionVisual.vue';
@@ -42,6 +45,25 @@ const rutas = [
         name: 'recuperar',
         component: RecuperarContrasena,
         meta: { requiereInvitado: true },
+    },
+    {
+        path: '/recuperar/confirmar',
+        name: 'recuperar-confirmar',
+        component: ConfirmarRecuperacion,
+        meta: { requiereInvitado: true },
+    },
+    {
+        path: '/verificar-correo',
+        name: 'verificar-correo',
+        component: VerificarCorreo,
+        meta: { requiereInvitado: true },
+    },
+    {
+        path: '/confirmar-tutor',
+        name: 'confirmar-tutor',
+        component: ConfirmarTutor,
+        // Sin meta "requiereInvitado": quien confirma es el TUTOR, que
+        // puede o no tener su propia sesión iniciada en este navegador
     },
     {
         path: '/inicio',

@@ -8,6 +8,7 @@ const configuracionRutas = require('./rutas/configuracion.rutas');
 const escrituraRutas = require('./rutas/escritura.rutas');
 const progresoRutas = require('./rutas/progreso.rutas');
 const ejerciciosRutas = require('./rutas/ejercicios.rutas');
+const documentosRutas = require('./rutas/documentos.rutas'); // Importar las rutas de documentos
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -23,7 +24,8 @@ app.use('/api/configuracion', configuracionRutas);
 app.use('/api/escritura', escrituraRutas); 
 app.use('/api/progreso', progresoRutas);
 app.use('/api/ejercicios', ejerciciosRutas);
-                
+app.use('/api/documentos', documentosRutas);
+
 // Ruta de prueba
 app.get('/', (req, res) => {
     res.json({ mensaje: 'Servidor funcionando correctamente' });

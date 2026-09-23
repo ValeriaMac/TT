@@ -16,8 +16,8 @@
         </option>
       </select>
 
-      <button class="btn-guardar" @click="guardarBorrador">
-        💾 Guardar
+      <button class="btn-guardar" @click="guardarDocumento" :disabled="guardando">
+        {{ guardando ? 'Guardando...' : '💾 Guardar' }}
       </button>
     </div>
     <p v-if="mensajeGuardado" class="mensaje-guardado">{{ mensajeGuardado }}</p>
@@ -99,7 +99,8 @@
 
 <script setup>
 import { ref, onMounted, nextTick } from 'vue';
-import axios from 'axios';
+import axios from 'axios'; // sigue haciendo falta solo para "fetch" del archivo EPUB en sí
+import api from '@/servicios/api';
 import Epub from 'epubjs';
 import { useRoute } from 'vue-router';
 import { useEstilosPersonalizacion } from '@/composables/useEstilosPersonalizacion';
@@ -121,14 +122,20 @@ onMounted(async () => {
     configuracionStore.cargarPlantillas();
   }
 
+  const idDocumento = route.query.documentoId;
   const nombreEpub = route.query.epub;
-  if (nombreEpub) {
-    // Viene de "Editar" en Documentos: se carga el texto del EPUB,
-    // no el borrador local genérico
+
+  if (idDocumento) {
+    // Viene de "Editar" en Documentos, sobre un documento de texto YA
+    // guardado antes — se carga desde el backend para seguir editándolo
+    await cargarDocumentoGuardado(idDocumento);
+  } else if (nombreEpub) {
+    // Viene de "Editar" en Documentos, pero sobre un EPUB: se extrae
+    // su texto (ver más abajo). Al guardar, esto crea un documento
+    // de texto NUEVO — no puede sobreescribir el EPUB original.
     await cargarTextoDesdeEpub(nombreEpub);
-  } else {
-    cargarBorradorLocal();
   }
+  // Si no viene ninguno de los dos, es un documento nuevo en blanco
 });
 
 // Descarga el EPUB y extrae su texto plano (sin las etiquetas HTML)
@@ -137,7 +144,7 @@ onMounted(async () => {
 async function cargarTextoDesdeEpub(nombre) {
   cargandoEpub.value = true;
   try {
-    const respuestaUrl = await axios.get(`http://localhost:3000/api/lector/url/${nombre}`);
+    const respuestaUrl = await api.get(`/lector/url/${nombre}`);
     const respuestaArchivo = await fetch(respuestaUrl.data.url);
     const arrayBuffer = await (await respuestaArchivo.blob()).arrayBuffer();
 
@@ -164,9 +171,9 @@ async function cargarTextoDesdeEpub(nombre) {
     nextTick(pintarTextoInicial);
     revisarOrtografia();
 
-    // El borrador de este documento se guarda aparte, para no
-    // mezclarse con el borrador genérico de "documento nuevo"
-    claveBorradorActual.value = `borrador-escritura-${nombre}`;
+    // idDocumentoActual se queda en null a propósito: al guardar esto
+    // por primera vez, se CREA un documento de texto nuevo (no se
+    // puede sobreescribir el EPUB original)
     libro.destroy();
   } catch (error) {
     console.error('No se pudo extraer el texto del EPUB:', error);
@@ -330,26 +337,55 @@ function alCambiarPlantilla() {
   }
 }
 
-// Guardado local (borrador): por ahora no existe un backend de
-// "documentos de texto", así que esto solo guarda en el navegador,
-// no en el servidor. No debe confundirse con "Mis documentos" todavía.
-// Cuando se está editando un EPUB existente, la clave incluye su
-// nombre para no mezclar su borrador con el de un documento nuevo.
-const claveBorradorActual = ref('borrador-escritura-nuevo');
+// Guardado real en el backend (tabla documentos_texto). Si ya existe
+// un id (porque se cargó un documento guardado antes, o porque ya se
+// guardó una vez en esta misma sesión), se actualiza ese mismo
+// documento; si no, se crea uno nuevo.
+const idDocumentoActual = ref(null);
+const guardando = ref(false);
 
-function guardarBorrador() {
-  localStorage.setItem(claveBorradorActual.value, JSON.stringify({ titulo: titulo.value, texto: texto.value }));
-  mensajeGuardado.value = 'Borrador guardado en este navegador (aún no se sincroniza con Documentos)';
-  setTimeout(() => (mensajeGuardado.value = ''), 4000);
+async function guardarDocumento() {
+  guardando.value = true;
+  mensajeGuardado.value = '';
+
+  try {
+    if (idDocumentoActual.value) {
+      await api.put(`/documentos/${idDocumentoActual.value}`, {
+        titulo: titulo.value,
+        contenido: texto.value,
+      });
+      mensajeGuardado.value = 'Documento actualizado';
+    } else {
+      const respuesta = await api.post('/documentos', {
+        titulo: titulo.value,
+        contenido: texto.value,
+      });
+      idDocumentoActual.value = respuesta.data.documento.id;
+      mensajeGuardado.value = 'Documento guardado — ya aparece en Documentos';
+    }
+  } catch (error) {
+    console.error('Error al guardar el documento:', error);
+    mensajeGuardado.value = 'No se pudo guardar el documento.';
+  } finally {
+    guardando.value = false;
+    setTimeout(() => (mensajeGuardado.value = ''), 4000);
+  }
 }
 
-function cargarBorradorLocal() {
-  const guardado = localStorage.getItem(claveBorradorActual.value);
-  if (guardado) {
-    const datos = JSON.parse(guardado);
-    titulo.value = datos.titulo || '';
-    texto.value = datos.texto || '';
+// Carga un documento de texto que ya se había guardado antes (llega
+// aquí con ?documentoId=X en la URL, típicamente desde "Editar" en
+// la lista de Documentos)
+async function cargarDocumentoGuardado(id) {
+  try {
+    const respuesta = await api.get(`/documentos/${id}`);
+    idDocumentoActual.value = respuesta.data.documento.id;
+    titulo.value = respuesta.data.documento.titulo;
+    texto.value = respuesta.data.documento.contenido;
     nextTick(pintarTextoInicial);
+    revisarOrtografia();
+  } catch (error) {
+    console.error('No se pudo cargar el documento:', error);
+    mensajeGuardado.value = 'No se pudo cargar ese documento.';
   }
 }
 
@@ -448,12 +484,7 @@ async function revisarOrtografia() {
   revisando.value = true;
 
   try {
-    const token = localStorage.getItem('token');
-    const respuesta = await axios.post(
-      'http://localhost:3000/api/escritura/revisar',
-      { texto: texto.value },
-      { headers: { Authorization: `Bearer ${token}` } }
-    );
+    const respuesta = await api.post('/escritura/revisar', { texto: texto.value });
 
     if (miTurno !== numeroDeTurno) return; // ya quedó obsoleta, se ignora
 

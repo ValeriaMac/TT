@@ -13,8 +13,10 @@ export const useAuthStore = defineStore('auth', {
 
     actions: {
         async registrar(datosFormulario) {
+            // Ya NO inicia sesión sola: el backend no manda token hasta
+            // que el correo (y, si es menor, el tutor) confirmen. Aquí
+            // solo se manda el registro y se regresa el mensaje.
             const respuesta = await api.post('/auth/registro', datosFormulario);
-            this.guardarSesion(respuesta.data.usuario, respuesta.data.token);
             return respuesta.data;
         },
 
