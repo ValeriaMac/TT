@@ -15,7 +15,9 @@ import Progreso from '../vistas/Progreso.vue';
 import Ejercicios from '../vistas/Ejercicios.vue';       // 👈 NUEVO
 import AtrapaElError from '../vistas/AtrapaElError.vue';
 import Cronometro from '../vistas/Cronometro.vue';
-import Tarjetas from '../vistas/Tarjetas.vue'; // 👈 NUEVO
+import Tarjetas from '../vistas/Tarjetas.vue';
+import TextoTrivia from '../vistas/TextoTrivia.vue';
+import Lluvia from '../vistas/Lluvia.vue'; // 👈 NUEVO
 
 const rutas = [
     {
@@ -105,6 +107,18 @@ const rutas = [
         path: '/ejercicios/tarjetas',
         name: 'tarjetas',
         component: Tarjetas,
+        meta: { requiereAutenticacion: true },
+    },
+    {
+        path: '/ejercicios/texto-trivia',
+        name: 'texto-trivia',
+        component: TextoTrivia,
+        meta: { requiereAutenticacion: true },
+    },
+    {
+        path: '/ejercicios/lluvia',
+        name: 'lluvia',
+        component: Lluvia,
         meta: { requiereAutenticacion: true },
     },
 ];

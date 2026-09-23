@@ -11,7 +11,9 @@
             <p>Textos y preguntas</p>
           </div>
         </div>
-        <p class="ejercicio-item deshabilitado">Texto + preguntas trivia — Próximamente</p>
+        <router-link to="/ejercicios/texto-trivia" class="ejercicio-item ejercicio-activo">
+          Texto + preguntas trivia →
+        </router-link>
       </div>
 
       <div class="tarjeta-categoria">
@@ -51,7 +53,9 @@
         <router-link to="/ejercicios/tarjetas" class="ejercicio-item ejercicio-activo">
           Tarjetas de letras →
         </router-link>
-        <p class="ejercicio-item deshabilitado">Lluvia de letras — Próximamente</p>
+        <router-link to="/ejercicios/lluvia" class="ejercicio-item ejercicio-activo">
+          Lluvia de letras →
+        </router-link>
       </div>
     </div>
   </div>
