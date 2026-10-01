@@ -7,7 +7,8 @@ import Registro from '../vistas/Registro.vue';
 import RecuperarContrasena from '../vistas/RecuperarContrasena.vue';
 import ConfirmarRecuperacion from '../vistas/ConfirmarRecuperacion.vue';
 import VerificarCorreo from '../vistas/VerificarCorreo.vue';   // 👈 NUEVO
-import ConfirmarTutor from '../vistas/ConfirmarTutor.vue';     // 👈 NUEVO
+import ConfirmarTutor from '../vistas/ConfirmarTutor.vue';
+import Insignias from '../vistas/Insignias.vue'; // 👈 NUEVO
 import Inicio from '../vistas/Inicio.vue';                    // 👈 NUEVO — dashboard
 import Lector from '../vistas/Lector.vue';
 import ConfiguracionVisual from '../vistas/ConfiguracionVisual.vue';
@@ -105,6 +106,12 @@ const rutas = [
         path: '/progreso',
         name: 'progreso',
         component: Progreso,
+        meta: { requiereAutenticacion: true },
+    },
+    {
+        path: '/insignias',
+        name: 'insignias',
+        component: Insignias,
         meta: { requiereAutenticacion: true },
     },
     {

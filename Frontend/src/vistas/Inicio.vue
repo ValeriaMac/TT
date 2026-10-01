@@ -3,7 +3,17 @@
 
     <!-- Bienvenida -->
     <div class="banner-bienvenida">
-      <div class="emoji-bienvenida">🦉</div>
+      <div class="emoji-bienvenida">
+        <img v-if="mascotaActiva?.imagen_url" :src="mascotaActiva.imagen_url" :alt="mascotaActiva.nombre" />
+        <span v-else>{{ mascotaActiva?.emoji_marcador || '🦉' }}</span>
+        <span
+          v-for="accesorio in accesoriosEquipados"
+          :key="accesorio.id"
+          class="accesorio-encimado"
+        >
+          {{ accesorio.emoji_marcador }}
+        </span>
+      </div>
       <div class="texto-bienvenida">
         <h1>¡Hola, {{ authStore.usuario?.nombre }}! 👋</h1>
       </div>
@@ -78,14 +88,32 @@ import { ref, computed, onMounted } from 'vue';
 import { useAuthStore } from '@/store/auth.store';
 import { useProgresoStore } from '@/store/progreso.store';
 import ModalDonacion from '@/componentes/ModalDonacion.vue';
+import api from '@/servicios/api';
 
 const authStore = useAuthStore();
 const progresoStore = useProgresoStore();
+
+// Mascota que se muestra en el banner de bienvenida (antes era un
+// búho fijo). Si todavía no tiene ninguna (nunca pasó por el login
+// nuevo), se cae de vuelta al 🦉 por defecto (ver el v-else del template).
+const mascotaActiva = ref(null);
+const accesoriosEquipados = ref([]);
+
+async function cargarMascotaActiva() {
+  try {
+    const respuesta = await api.get('/mascotas/activa');
+    mascotaActiva.value = respuesta.data.mascotaActiva;
+    accesoriosEquipados.value = respuesta.data.accesoriosEquipados;
+  } catch (error) {
+    console.error('No se pudo cargar la mascota activa:', error);
+  }
+}
 
 onMounted(() => {
   if (!progresoStore.cargado) {
     progresoStore.cargarProgreso();
   }
+  cargarMascotaActiva();
 });
 
 // Ya no son valores fijos: vienen del backend real (tabla progreso_general)
@@ -158,7 +186,26 @@ const modulos = [
 }
 
 .emoji-bienvenida {
+  position: relative;
   font-size: 3.5rem;
+}
+
+.emoji-bienvenida img {
+  width: 64px;
+  height: 64px;
+  object-fit: contain;
+}
+
+.accesorio-encimado {
+  position: absolute;
+  font-size: 1.4rem;
+  bottom: -4px;
+  right: -8px;
+}
+
+.accesorio-encimado:nth-child(3) {
+  right: auto;
+  left: -8px;
 }
 
 .texto-bienvenida {

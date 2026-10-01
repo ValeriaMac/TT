@@ -5,6 +5,7 @@ const crypto = require('crypto');
 
 const supabase = require('../config/supabase.cliente');
 const { enviarCorreo } = require('../utilidades/correo');
+const { otorgarMascotaBienvenida } = require('./mascotas.controlador');
 
 async function enviarCorreoDeConfirmacion(usuario) {
     const token = crypto.randomBytes(32).toString('hex');
@@ -194,6 +195,11 @@ async function iniciarSesion(req, res) {
         const token = jwt.sign({ id: usuario.id }, process.env.JWT_SECRET, {
             expiresIn: process.env.JWT_EXPIRA,
         });
+
+        // El búho de bienvenida se otorga aquí, en cada login exitoso.
+        // Si ya lo tenía, otorgarMascotaBienvenida simplemente no hace
+        // nada (revisa duplicados antes de insertar).
+        await otorgarMascotaBienvenida(usuario.id);
 
         res.json({
             mensaje: 'Sesión iniciada correctamente',

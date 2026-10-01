@@ -1,4 +1,6 @@
 const supabase = require('../config/supabase.cliente');
+const { revisarRecompensas } = require('./mascotas.controlador');
+const { determinarNivelYSubnivel } = require('../utilidades/utilidades_juegos');
 
 // GET /api/progreso (protegida)
 async function obtenerProgreso(req, res) {
@@ -57,6 +59,18 @@ async function registrarResultado(req, res) {
             nivelId = nivel?.id || null;
         }
 
+        // Se revisa ANTES de insertar si este usuario ya tenía algún
+        // resultado previo en este ejercicio — así se sabe si el que
+        // se está a punto de guardar es su "primera vez" (para la
+        // mascota de "primeros pasos")
+        const { count: resultadosPrevios } = await supabase
+            .from('resultados_ejercicio')
+            .select('id', { count: 'exact', head: true })
+            .eq('usuario_id', req.usuarioId)
+            .eq('ejercicio_id', ejercicio.id);
+
+        const esPrimerResultado = (resultadosPrevios || 0) === 0;
+
         // 1) Se guarda el intento tal cual (historial completo, RF_19)
         const { error: errorInsertar } = await supabase.from('resultados_ejercicio').insert({
             usuario_id: req.usuarioId,
@@ -110,7 +124,22 @@ async function registrarResultado(req, res) {
 
         if (errorActualizar) throw errorActualizar;
 
-        res.json({ mensaje: 'Resultado registrado', progreso: progresoActualizado });
+        // 3) Se revisan las recompensas (mascotas/accesorios) que este
+        // resultado podría haber desbloqueado
+        const { ejercicioCompletado } = await determinarNivelYSubnivel(req.usuarioId, ejercicio.id);
+
+        const recompensasNuevas = await revisarRecompensas(req.usuarioId, {
+            ejercicioClave,
+            esPrimerResultado,
+            fuePerfecta: puntosObtenidos === 100,
+            ejercicioCompletado,
+        });
+
+        res.json({
+            mensaje: 'Resultado registrado',
+            progreso: progresoActualizado,
+            recompensasNuevas, // el frontend puede usar esto para mostrar "¡Ganaste algo!"
+        });
 
     } catch (error) {
         console.error('Error al registrar resultado:', error);

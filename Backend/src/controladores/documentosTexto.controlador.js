@@ -1,5 +1,6 @@
 // controladores/documentosTexto.controlador.js
 const supabase = require('../config/supabase.cliente');
+const { revisarRecompensas } = require('./mascotas.controlador');
 
 // POST /api/documentos (protegida)
 // Body: { titulo, contenido }
@@ -19,7 +20,11 @@ async function crearDocumento(req, res) {
 
         if (error) throw error;
 
-        res.status(201).json({ mensaje: 'Documento creado', documento: data });
+        // Solo al CREAR (no al actualizar) puede desbloquear las
+        // recompensas de escritura — cada documento nuevo cuenta
+        const recompensasNuevas = await revisarRecompensas(req.usuarioId);
+
+        res.status(201).json({ mensaje: 'Documento creado', documento: data, recompensasNuevas });
     } catch (error) {
         console.error('Error al crear documento:', error);
         res.status(500).json({ mensaje: 'Error interno del servidor' });
