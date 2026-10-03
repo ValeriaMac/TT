@@ -21,6 +21,23 @@
       <button class="btn-primario" @click="jugarLibre = true">Practicar de todos modos</button>
     </div>
 
+    <!-- Pantalla de instrucciones -->
+    <div v-else-if="!terminado && !instruccionesVistas" class="tarjeta-ejercicio">
+      <IlustracionAtrapaElError />
+      <p class="indicador-nivel">Nivel {{ numeroNivel }} · Subnivel {{ subnivelActual }} de 5</p>
+      <p class="instruccion-grande">
+        Vas a leer una oración con una palabra incorrecta escondida.
+        Encuéntrala y escríbela como debería ser. Son {{ preguntas.length }} oraciones
+        en esta ronda.
+      </p>
+      <p class="instruccion-meta">
+        Si fallas 3 veces seguidas en la misma pregunta, la palabra con el
+        error se va a resaltar para ayudarte en la siguiente.
+      </p>
+      <p class="instruccion-meta">Necesitas las {{ preguntas.length }} correctas para subir de subnivel.</p>
+      <button class="btn-primario" @click="instruccionesVistas = true">▶ Comenzar</button>
+    </div>
+
     <!-- Ronda en curso -->
     <div v-else-if="!terminado" class="tarjeta-ejercicio">
       <p class="indicador-nivel">Nivel {{ numeroNivel }} · Subnivel {{ subnivelActual }} de 5</p>
@@ -33,7 +50,7 @@
           v-model="respuestaUsuario"
           type="text"
           placeholder="Escribe la palabra correcta"
-          :disabled="mostrandoResultado"
+          :disabled="mostrandoResultado || verificando"
           class="input-respuesta"
           autofocus
         />
@@ -43,7 +60,9 @@
           <span v-else>✕ Era: {{ ultimoResultado.respuestaCorrecta }}</span>
         </p>
 
-        <button v-if="!mostrandoResultado" type="submit" class="btn-primario">Comprobar</button>
+        <button v-if="!mostrandoResultado" type="submit" class="btn-primario" :disabled="verificando">
+          {{ verificando ? 'Comprobando...' : 'Comprobar' }}
+        </button>
         <button v-else type="button" class="btn-primario" @click="siguientePregunta">
           {{ esUltimaPregunta ? 'Ver resultados' : 'Siguiente' }}
         </button>
@@ -88,14 +107,18 @@
 import { ref, computed, onMounted } from 'vue';
 import api from '@/servicios/api';
 import { useProgresoStore } from '@/store/progreso.store';
+import { useSonidosJuego } from '../composables/useSonidosJuego';
+import IlustracionAtrapaElError from '@/componentes/ilustraciones/IlustracionAtrapaElError.vue'
 
 const progresoStore = useProgresoStore();
+const { sonidoAcierto, sonidoError } = useSonidosJuego();
 
 const PUNTOS_POR_ACIERTO = 20; // igual que en la Tabla de reglas técnicas del ejercicio
 const TOTAL_PREGUNTAS_RONDA = 5;
 
 const cargando = ref(true);
 const errorCarga = ref('');
+const instruccionesVistas = ref(false);
 const preguntas = ref([]);
 
 // Ya no es un valor fijo: lo calcula el backend según el progreso
@@ -107,6 +130,7 @@ const jugarLibre = ref(false); // permite seguir practicando aunque ya haya term
 const indiceActual = ref(0);
 const respuestaUsuario = ref('');
 const mostrandoResultado = ref(false);
+const verificando = ref(false);
 const ultimoResultado = ref(null);
 const aciertos = ref(0);
 const erroresCount = ref(0);
@@ -146,28 +170,37 @@ async function cargarPreguntas() {
 }
 
 async function manejarRespuesta() {
-  if (!respuestaUsuario.value.trim()) return;
+  if (!respuestaUsuario.value.trim() || verificando.value) return;
 
-  const respuesta = await api.post('/ejercicios/atrapa-error/verificar', {
-    preguntaId: preguntaActual.value.id,
-    respuesta: respuestaUsuario.value,
-  });
+  verificando.value = true;
+  try {
+    const respuesta = await api.post('/ejercicios/atrapa-error/verificar', {
+      preguntaId: preguntaActual.value.id,
+      respuesta: respuestaUsuario.value,
+    });
 
-  ultimoResultado.value = respuesta.data;
-  mostrandoResultado.value = true;
+    ultimoResultado.value = respuesta.data;
+    mostrandoResultado.value = true;
 
-  if (respuesta.data.correcto) {
-    aciertos.value++;
-    erroresConsecutivos.value = 0;
-    palabraAResaltar.value = null;
-  } else {
-    erroresCount.value++;
-    erroresConsecutivos.value++;
-    // A partir del 3er fallo seguido, se prepara el resaltado para
-    // la SIGUIENTE pregunta
-    if (erroresConsecutivos.value >= 3) {
-      palabraAResaltar.value = respuesta.data.palabraIncorrecta;
+    if (respuesta.data.correcto) {
+      aciertos.value++;
+      erroresConsecutivos.value = 0;
+      palabraAResaltar.value = null;
+      sonidoAcierto();
+    } else {
+      erroresCount.value++;
+      erroresConsecutivos.value++;
+      sonidoError();
+      // A partir del 3er fallo seguido, se prepara el resaltado para
+      // la SIGUIENTE pregunta
+      if (erroresConsecutivos.value >= 3) {
+        palabraAResaltar.value = respuesta.data.palabraIncorrecta;
+      }
     }
+  } catch (error) {
+    console.error('No se pudo comprobar la respuesta:', error);
+  } finally {
+    verificando.value = false;
   }
 }
 
@@ -209,6 +242,7 @@ function reiniciar() {
   erroresConsecutivos.value = 0;
   terminado.value = false;
   palabraAResaltar.value = null;
+  instruccionesVistas.value = false;
   cargarPreguntas();
 }
 
@@ -249,6 +283,18 @@ onMounted(cargarPreguntas);
 .instruccion {
   color: var(--color-texto-secundario);
   margin-bottom: 1.2rem;
+}
+
+.instruccion-grande {
+  font-size: 1.05rem;
+  margin-bottom: 1rem;
+  line-height: 1.6;
+}
+
+.instruccion-meta {
+  font-size: 0.85rem;
+  color: var(--color-texto-secundario);
+  margin-bottom: 0.6rem;
 }
 
 .nota-avance {
@@ -317,8 +363,13 @@ onMounted(cargarPreguntas);
   text-decoration: none;
 }
 
-.btn-primario:hover {
+.btn-primario:hover:not(:disabled) {
   background-color: var(--color-primario-hover);
+}
+
+.btn-primario:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 
 .contador-preguntas {

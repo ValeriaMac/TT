@@ -19,6 +19,7 @@
 
     <!-- Pantalla de inicio de ronda -->
     <div v-else-if="!jugando && !terminado" class="tarjeta-ejercicio">
+      <IlustracionLluvia />
       <p class="indicador-nivel">Nivel {{ numeroNivel }} · Subnivel {{ subnivelActual }} de 5</p>
       <p class="instruccion-grande">
         Atrapa las letras que se van marcando arriba — la letra a atrapar
@@ -27,6 +28,10 @@
       </p>
       <p class="instruccion-teclado">
         Puedes darle clic a la letra, o escribirla en tu teclado.
+      </p>
+      <p class="instruccion-teclado">
+        Al principio solo caen pocas letras distintas, pero conforme pasa el
+        tiempo van apareciendo letras nuevas y todo cae más rápido.
       </p>
       <p class="instruccion-meta">Necesitas {{ umbralParaAvanzar }} aciertos antes de perder tus vidas para subir de subnivel.</p>
       <button class="btn-primario" @click="comenzarJuego">▶ Comenzar</button>
@@ -69,7 +74,8 @@
         </div>
       </div>
 
-      <p v-if="rachaActual >= 2" class="texto-racha">🔥 ¡Racha x{{ rachaActual }}!</p>
+      <p v-if="letraNuevaRecienDesbloqueada" class="texto-letra-nueva">✨ ¡Nueva letra en juego: {{ letraNuevaRecienDesbloqueada }}!</p>
+      <p v-else-if="rachaActual >= 2" class="texto-racha">🔥 ¡Racha x{{ rachaActual }}!</p>
     </div>
 
     <!-- Pantalla final: perdiste las 4 vidas -->
@@ -109,18 +115,27 @@
 import { ref, computed, onMounted, onUnmounted } from 'vue';
 import api from '@/servicios/api';
 import { useProgresoStore } from '@/store/progreso.store';
+import { useSonidosJuego } from '../composables/useSonidosJuego';
+import IlustracionLluvia from '@/componentes/ilustraciones/IlustracionLluvia.vue'
 
 const progresoStore = useProgresoStore();
+const { sonidoAcierto, sonidoError, sonidoVidaPerdida } = useSonidosJuego();
 
 const ALTURA_AREA = 350; // px, debe coincidir con el CSS de .area-caida
 const VIDAS_INICIALES = 4;
 
+
 // ===== Ajustes de dificultad progresiva (mientras más dura la ronda, más difícil) =====
-const INTERVALO_AUMENTO_DIFICULTAD_MS = 12000; // cada 12s todo se pone un poco más rápido
+const INTERVALO_AUMENTO_DIFICULTAD_MS = 12000; // cada 12s todo se pone un poco más rápido Y puede desbloquear una letra nueva
 const FACTOR_AUMENTO_DIFICULTAD = 1.12;         // +12% de dificultad en cada paso
 const VELOCIDAD_MINIMA_MS = 700;                // nunca cae más rápido que esto (jugable)
 const INTERVALO_SPAWN_BASE_MS = 900;             // cada cuánto nace una letra nueva, al inicio
 const INTERVALO_SPAWN_MINIMO_MS = 350;
+
+// Cuántas letras distintas hay en juego desde el principio (objetivo +
+// este número de distractores). El resto del pool que mande el backend
+// se va desbloqueando poco a poco, no todo de golpe.
+const LETRAS_INICIALES_EN_JUEGO = 2;
 
 // Cada cuánto cambia la letra objetivo (estilo "Guitar Hero": el
 // blanco se va moviendo, no te puedes quedar memorizando solo uno)
@@ -128,7 +143,8 @@ const INTERVALO_ROTACION_OBJETIVO_MS = 8000;
 
 const cargando = ref(true);
 const errorCarga = ref('');
-const poolLetras = ref([]); // todas las letras posibles de este nivel (objetivo + distractores)
+const poolLetras = ref([]); // TODAS las letras posibles de este nivel (objetivo + distractores), venga del backend
+const letrasDesbloqueadas = ref([]); // subconjunto de poolLetras que ya está "en juego" ahora mismo
 const velocidadBaseMs = ref(3000);
 
 const numeroNivel = ref(1);
@@ -153,10 +169,12 @@ const puntosGanados = ref(0);
 const rachaActual = ref(0);
 const rachaMaxima = ref(0);
 const efectosFlotantes = ref([]);
+const letraNuevaRecienDesbloqueada = ref(''); // aviso breve cuando se agrega una letra nueva al juego
 
 let idSiguiente = 0;
 let idEfecto = 0;
 let intervaloJuego = null;
+let avisoLetraNuevaTimeout = null;
 
 // Se miden en "tiempo transcurrido desde que empezó la ronda", para
 // poder decidir cuándo toca subir la dificultad, cuándo toca rotar el
@@ -167,33 +185,6 @@ let msParaSiguienteSpawn = 0;
 let msDesdeUltimaRotacion = 0;
 let msDesdeUltimoAumento = 0;
 let factorDificultadActual = 1;
-
-// ===== Sonido: tonos simples con Web Audio API, sin archivos externos =====
-let audioContext = null;
-function obtenerAudioContext() {
-  if (!audioContext) audioContext = new (window.AudioContext || window.webkitAudioContext)();
-  return audioContext;
-}
-function reproducirTono(frecuencia, duracionMs, tipoOnda = 'sine') {
-  try {
-    const ctx = obtenerAudioContext();
-    const oscilador = ctx.createOscillator();
-    const ganancia = ctx.createGain();
-    oscilador.type = tipoOnda;
-    oscilador.frequency.value = frecuencia;
-    oscilador.connect(ganancia);
-    ganancia.connect(ctx.destination);
-    ganancia.gain.setValueAtTime(0.15, ctx.currentTime);
-    ganancia.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + duracionMs / 1000);
-    oscilador.start();
-    oscilador.stop(ctx.currentTime + duracionMs / 1000);
-  } catch (error) {
-    console.warn('No se pudo reproducir sonido:', error);
-  }
-}
-function sonidoAcierto() { reproducirTono(700, 120); }
-function sonidoError() { reproducirTono(180, 220, 'sawtooth'); }
-function sonidoVidaPerdida() { reproducirTono(120, 350, 'square'); }
 
 async function cargarConfiguracion() {
   cargando.value = true;
@@ -214,14 +205,33 @@ async function cargarConfiguracion() {
 }
 
 function elegirNuevoObjetivo() {
-  if (poolLetras.value.length <= 1) {
-    objetivoActual.value = poolLetras.value[0];
+  // El objetivo siempre se elige entre las letras YA desbloqueadas —
+  // no tendría sentido pedirle al usuario atrapar una letra que
+  // todavía ni siquiera ha aparecido en pantalla
+  const pool = letrasDesbloqueadas.value;
+  if (pool.length <= 1) {
+    objetivoActual.value = pool[0];
     return;
   }
-  // Elige una letra del pool distinta a la actual, para que sí se
-  // sienta como un cambio real cada vez
-  let candidatas = poolLetras.value.filter((l) => l !== objetivoActual.value);
+  const candidatas = pool.filter((l) => l !== objetivoActual.value);
   objetivoActual.value = candidatas[Math.floor(Math.random() * candidatas.length)];
+}
+
+// Agrega UNA letra nueva del pool completo a las letras desbloqueadas,
+// si todavía queda alguna por desbloquear. Esto es lo que hace que la
+// dificultad escale no solo en velocidad, sino también en variedad.
+function desbloquearSiguienteLetra() {
+  const faltantes = poolLetras.value.filter((l) => !letrasDesbloqueadas.value.includes(l));
+  if (faltantes.length === 0) return;
+
+  const nueva = faltantes[Math.floor(Math.random() * faltantes.length)];
+  letrasDesbloqueadas.value.push(nueva);
+
+  letraNuevaRecienDesbloqueada.value = nueva;
+  clearTimeout(avisoLetraNuevaTimeout);
+  avisoLetraNuevaTimeout = setTimeout(() => {
+    letraNuevaRecienDesbloqueada.value = '';
+  }, 2500);
 }
 
 function comenzarJuego() {
@@ -231,6 +241,12 @@ function comenzarJuego() {
   rachaMaxima.value = 0;
   letrasActivas.value = [];
   efectosFlotantes.value = [];
+  letraNuevaRecienDesbloqueada.value = '';
+
+  // Arranca con solo unas pocas letras del pool total (objetivo +
+  // 1 distractor); el resto se va sumando con el tiempo
+  const pool = [...poolLetras.value];
+  letrasDesbloqueadas.value = pool.slice(0, Math.min(LETRAS_INICIALES_EN_JUEGO, pool.length));
 
   msTranscurridos = 0;
   msParaSiguienteSpawn = 0;
@@ -247,13 +263,14 @@ function comenzarJuego() {
 }
 
 function nacerLetra() {
+  const pool = letrasDesbloqueadas.value;
   // Un poco más de la mitad de las letras que nacen son el objetivo
   // actual, para que atraparlo siga siendo frecuente
   const esObjetivo = Math.random() < 0.55;
   const caracter = esObjetivo
     ? objetivoActual.value
-    : poolLetras.value.filter((l) => l !== objetivoActual.value)[
-        Math.floor(Math.random() * Math.max(1, poolLetras.value.length - 1))
+    : pool.filter((l) => l !== objetivoActual.value)[
+        Math.floor(Math.random() * Math.max(1, pool.length - 1))
       ] || objetivoActual.value;
 
   const velocidadPropia = Math.max(VELOCIDAD_MINIMA_MS, velocidadBaseMs.value / factorDificultadActual);
@@ -322,10 +339,11 @@ function iniciarGameLoop() {
     msDesdeUltimaRotacion += MS_POR_PASO;
     msDesdeUltimoAumento += MS_POR_PASO;
 
-    // 1) ¿Toca aumentar la dificultad?
+    // 1) ¿Toca aumentar la dificultad? (velocidad + posiblemente una letra nueva)
     if (msDesdeUltimoAumento >= INTERVALO_AUMENTO_DIFICULTAD_MS) {
       msDesdeUltimoAumento = 0;
       factorDificultadActual *= FACTOR_AUMENTO_DIFICULTAD;
+      desbloquearSiguienteLetra();
     }
 
     // 2) ¿Toca rotar el objetivo? (estilo Guitar Hero)
@@ -412,6 +430,7 @@ onMounted(() => {
 
 onUnmounted(() => {
   clearInterval(intervaloJuego);
+  clearTimeout(avisoLetraNuevaTimeout);
   window.removeEventListener('keydown', manejarTecla);
 });
 </script>
@@ -534,6 +553,14 @@ onUnmounted(() => {
   color: #e67e22;
   margin-top: 0.8rem;
   font-size: 1.1rem;
+}
+
+.texto-letra-nueva {
+  text-align: center;
+  font-weight: 600;
+  color: var(--color-primario);
+  margin-top: 0.8rem;
+  font-size: 1rem;
 }
 
 .efecto-flotante {

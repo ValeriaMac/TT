@@ -17,6 +17,19 @@
       <button class="btn-primario" @click="jugarLibre = true">Practicar de todos modos</button>
     </div>
 
+    <!-- Pantalla de instrucciones, antes de ver el texto -->
+    <div v-else-if="!terminado && !instruccionesVistas" class="tarjeta-ejercicio">
+      <IlustracionTrivia />
+      <p class="indicador-nivel">Nivel {{ numeroNivel }} · Subnivel {{ subnivelActual }} de 5</p>
+      <p class="instruccion-grande">
+        Primero vas a leer un texto con calma. Cuando estés listo, le das a
+        "Empezar trivia" y el texto se va a <strong>ocultar</strong> — las
+        preguntas se responden de memoria, no viendo el texto al mismo tiempo.
+      </p>
+      <p class="instruccion-meta">Necesitas acertar TODAS las preguntas para subir de subnivel.</p>
+      <button class="btn-primario" @click="instruccionesVistas = true">▶ Comenzar</button>
+    </div>
+
     <!-- Fase 1: solo lectura, sin preguntas visibles todavía -->
     <div v-else-if="!terminado && faseLectura" class="tarjeta-ejercicio">
       <p class="indicador-nivel">Nivel {{ numeroNivel }} · Subnivel {{ subnivelActual }} de 5</p>
@@ -29,14 +42,9 @@
       <button class="btn-primario" @click="faseLectura = false">Empezar trivia</button>
     </div>
 
-    <!-- Fase 2: ronda de preguntas en curso -->
+    <!-- Fase 2: ronda de preguntas en curso (el texto YA NO se muestra aquí a propósito) -->
     <div v-else-if="!terminado" class="tarjeta-ejercicio">
       <p class="indicador-nivel">Nivel {{ numeroNivel }} · Subnivel {{ subnivelActual }} de 5</p>
-
-      <div class="caja-lectura">
-        <p class="etiqueta-lectura">Lee este texto:</p>
-        {{ textoLectura }}
-      </div>
 
       <p class="pregunta-actual">{{ preguntaActual?.pregunta }}</p>
 
@@ -50,7 +58,7 @@
             'opcion-correcta': mostrandoResultado && opcion === ultimoResultado?.respuestaCorrecta,
             'opcion-incorrecta': mostrandoResultado && opcionElegida === opcion && !ultimoResultado?.correcto
           }"
-          :disabled="mostrandoResultado"
+          :disabled="mostrandoResultado || verificando"
           @click="elegirOpcion(opcion)"
         >
           {{ opcion }}
@@ -60,10 +68,10 @@
       <button
         v-if="!mostrandoResultado"
         class="btn-primario"
-        :disabled="!opcionElegida"
+        :disabled="!opcionElegida || verificando"
         @click="responder"
       >
-        Comprobar
+        {{ verificando ? 'Comprobando...' : 'Comprobar' }}
       </button>
       <button v-else class="btn-primario" @click="siguientePregunta">
         {{ esUltimaPregunta ? 'Ver resultados' : 'Siguiente' }}
@@ -107,17 +115,23 @@
 import { ref, computed, onMounted } from 'vue';
 import api from '@/servicios/api';
 import { useProgresoStore } from '@/store/progreso.store';
+import { useSonidosJuego } from '../composables/useSonidosJuego';
+import IlustracionTrivia from '@/componentes/ilustraciones/IlustracionTrivia.vue';
+
 
 const progresoStore = useProgresoStore();
+const { sonidoAcierto, sonidoError } = useSonidosJuego();
 
 const cargando = ref(true);
 const errorCarga = ref('');
-const faseLectura = ref(true); // empieza mostrando solo el texto, sin preguntas
+const instruccionesVistas = ref(false); // pantalla de instrucciones, igual que en Lluvia
+const faseLectura = ref(true); // después de las instrucciones, muestra solo el texto, sin preguntas
 const textoLectura = ref('');
 const preguntas = ref([]);
 const indiceActual = ref(0);
 const opcionElegida = ref(null);
 const mostrandoResultado = ref(false);
+const verificando = ref(false); // true mientras se espera la respuesta del backend
 const ultimoResultado = ref(null);
 const aciertos = ref(0);
 const erroresCount = ref(0);
@@ -156,23 +170,39 @@ async function cargarPreguntas() {
 }
 
 function elegirOpcion(opcion) {
-  if (mostrandoResultado.value) return;
+  if (mostrandoResultado.value || verificando.value) return;
   opcionElegida.value = opcion;
 }
 
 async function responder() {
-  if (!opcionElegida.value) return;
+  if (!opcionElegida.value || verificando.value) return;
 
-  const respuesta = await api.post('/ejercicios/texto-trivia/verificar', {
-    preguntaId: preguntaActual.value.id,
-    respuesta: opcionElegida.value,
-  });
+  // "verificando" se activa ANTES de llamar al backend, así el botón
+  // se deshabilita y cambia de texto de inmediato — ya no se siente
+  // como que el clic "no hizo nada" mientras se espera la respuesta.
+  verificando.value = true;
 
-  ultimoResultado.value = respuesta.data;
-  mostrandoResultado.value = true;
+  try {
+    const respuesta = await api.post('/ejercicios/texto-trivia/verificar', {
+      preguntaId: preguntaActual.value.id,
+      respuesta: opcionElegida.value,
+    });
 
-  if (respuesta.data.correcto) aciertos.value++;
-  else erroresCount.value++;
+    ultimoResultado.value = respuesta.data;
+    mostrandoResultado.value = true;
+
+    if (respuesta.data.correcto) {
+      aciertos.value++;
+      sonidoAcierto();
+    } else {
+      erroresCount.value++;
+      sonidoError();
+    }
+  } catch (error) {
+    console.error('No se pudo comprobar la respuesta:', error);
+  } finally {
+    verificando.value = false;
+  }
 }
 
 async function siguientePregunta() {
@@ -205,6 +235,7 @@ function reiniciar() {
   aciertos.value = 0;
   erroresCount.value = 0;
   terminado.value = false;
+  instruccionesVistas.value = false;
   faseLectura.value = true;
   cargarPreguntas();
 }
@@ -241,6 +272,18 @@ onMounted(cargarPreguntas);
   padding: 0.3rem 0.8rem;
   border-radius: 999px;
   margin-bottom: 1rem;
+}
+
+.instruccion-grande {
+  font-size: 1.05rem;
+  margin-bottom: 1rem;
+  line-height: 1.6;
+}
+
+.instruccion-meta {
+  font-size: 0.85rem;
+  color: var(--color-texto-secundario);
+  margin-bottom: 0.6rem;
 }
 
 .caja-lectura {

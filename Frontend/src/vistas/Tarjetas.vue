@@ -10,15 +10,31 @@
     </div>
 
     <!-- Ya completó los 5 niveles x 5 subniveles -->
-    <div v-else-if="ejercicioCompletado && !terminado && !jugarLibre" class="tarjeta-ejercicio tarjeta-resultado-final">
+    <div v-else-if="ejercicioCompletado && !terminado && !jugarLibre && !jugando" class="tarjeta-ejercicio tarjeta-resultado-final">
       <div class="emoji-final">🏆</div>
       <h2>¡Completaste todo el ejercicio!</h2>
       <p class="nota-avance">Ya pasaste los 5 niveles con sus 5 subniveles cada uno. Puedes seguir practicando libremente.</p>
       <button class="btn-primario" @click="jugarLibre = true">Practicar de todos modos</button>
     </div>
 
+    <!-- Pantalla de instrucciones, antes de que arranque el tiempo -->
+    <div v-else-if="!terminado && !jugando" class="tarjeta-ejercicio">
+      <IlustracionTarjetas />
+      <p class="indicador-nivel">Nivel {{ numeroNivel }} · Subnivel {{ subnivelActual }} de 5</p>
+      <p class="instruccion-grande">
+        Verás una tarjeta con una palabra incompleta o una letra a elegir. Decide rápidamente cuál es la opción correcta entre las 
+        dos alternativas (por ejemplo, B o V). Tienes {{ TIEMPO_POR_TARJETA }} segundos por tarjeta — si se acaba el tiempo 
+        sin responder, cuenta como error.
+      </p>
+      <p class="instruccion-meta">
+        Puedes usar el botón de cada letra, o las flechas ← → de tu teclado.
+      </p>
+      <p class="instruccion-meta">Necesitas acertar todas para subir de subnivel.</p>
+      <button class="btn-primario" @click="comenzarRonda">▶ Comenzar</button>
+    </div>
+
     <!-- Ronda en curso -->
-    <div v-else-if="!terminado" class="tarjeta-ejercicio">
+    <div v-else-if="jugando" class="tarjeta-ejercicio">
       <p class="indicador-nivel">Nivel {{ numeroNivel }} · Subnivel {{ subnivelActual }} de 5</p>
       <p class="instruccion">
         ¿Esto tiene una <strong>{{ tarjetaActual?.letraIzquierda }}</strong>
@@ -88,13 +104,19 @@
 import { ref, computed, onMounted, onUnmounted } from 'vue';
 import api from '@/servicios/api';
 import { useProgresoStore } from '@/store/progreso.store';
+import { useSonidosJuego } from '../composables/useSonidosJuego';
+import IlustracionTarjetas from '@/componentes/ilustraciones/IlustracionTarjetas.vue'
+
+
 
 const progresoStore = useProgresoStore();
+const { sonidoAcierto, sonidoError } = useSonidosJuego();
 
 const TIEMPO_POR_TARJETA = 5; // segundos para decidir cada tarjeta
 
 const cargando = ref(true);
 const errorCarga = ref('');
+const jugando = ref(false); // false = pantalla de instrucciones; true = el temporizador ya corre
 const tarjetas = ref([]);
 const indiceActual = ref(0);
 const mostrandoResultado = ref(false);
@@ -121,6 +143,9 @@ const puntosGanados = computed(() =>
   tarjetas.value.length > 0 ? Math.round((aciertos.value / tarjetas.value.length) * 100) : 0
 );
 
+// Solo trae las tarjetas del servidor — NO arranca el temporizador
+// todavía, eso pasa hasta que el usuario le dé a "Comenzar" en la
+// pantalla de instrucciones (ver comenzarRonda)
 async function cargarTarjetas() {
   cargando.value = true;
   errorCarga.value = '';
@@ -130,13 +155,20 @@ async function cargarTarjetas() {
     numeroNivel.value = respuesta.data.numeroNivel;
     subnivelActual.value = respuesta.data.subnivel;
     ejercicioCompletado.value = respuesta.data.ejercicioCompletado;
-    iniciarTemporizadorTarjeta();
   } catch (error) {
     console.error('No se pudieron cargar las tarjetas:', error);
     errorCarga.value = error.response?.data?.mensaje || 'No se pudo conectar con el servidor.';
   } finally {
     cargando.value = false;
   }
+}
+
+function comenzarRonda() {
+  jugando.value = true;
+  indiceActual.value = 0;
+  mostrandoResultado.value = false;
+  ultimoResultado.value = null;
+  iniciarTemporizadorTarjeta();
 }
 
 function iniciarTemporizadorTarjeta() {
@@ -161,14 +193,20 @@ async function responder(respuestaUsuario) {
     // Se agotó el tiempo: no se llama al backend, se marca directo como error
     ultimoResultado.value = { correcto: false, respuestaCorrecta: 'tiempo agotado' };
     erroresCount.value++;
+    sonidoError();
   } else {
     const respuesta = await api.post('/ejercicios/tarjetas/verificar', {
       tarjetaId: tarjetaActual.value.id,
       respuestaUsuario,
     });
     ultimoResultado.value = respuesta.data;
-    if (respuesta.data.correcto) aciertos.value++;
-    else erroresCount.value++;
+    if (respuesta.data.correcto) {
+      aciertos.value++;
+      sonidoAcierto();
+    } else {
+      erroresCount.value++;
+      sonidoError();
+    }
   }
 
   mostrandoResultado.value = true;
@@ -186,6 +224,7 @@ async function responder(respuestaUsuario) {
 }
 
 async function finalizarRonda() {
+  jugando.value = false;
   terminado.value = true;
 
   await progresoStore.registrarResultado({
@@ -198,6 +237,7 @@ async function finalizarRonda() {
 }
 
 function reiniciar() {
+  jugando.value = false;
   indiceActual.value = 0;
   mostrandoResultado.value = false;
   ultimoResultado.value = null;
@@ -210,7 +250,7 @@ function reiniciar() {
 // Soporte de teclado: flecha izquierda = B, flecha derecha = D —
 // practica también la asociación letra/dirección, no solo el clic
 function manejarTecla(evento) {
-  if (mostrandoResultado.value || terminado.value) return;
+  if (!jugando.value || mostrandoResultado.value || terminado.value) return;
   if (evento.key === 'ArrowLeft') responder('izquierda');
   else if (evento.key === 'ArrowRight') responder('derecha');
 }
@@ -261,6 +301,18 @@ onUnmounted(() => {
   color: var(--color-texto-secundario);
   margin-bottom: 1.2rem;
   text-align: center;
+}
+
+.instruccion-grande {
+  font-size: 1.05rem;
+  margin-bottom: 1rem;
+  line-height: 1.6;
+}
+
+.instruccion-meta {
+  font-size: 0.85rem;
+  color: var(--color-texto-secundario);
+  margin-bottom: 0.6rem;
 }
 
 .caja-palabra {
@@ -415,6 +467,10 @@ onUnmounted(() => {
   cursor: pointer;
   text-align: center;
   text-decoration: none;
+}
+
+.btn-primario:hover {
+  background-color: var(--color-primario-hover);
 }
 
 .btn-secundario {

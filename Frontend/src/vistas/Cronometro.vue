@@ -17,6 +17,31 @@
       <button class="btn-primario" @click="jugarLibre = true">Practicar de todos modos</button>
     </div>
 
+    <!-- Pantalla de instrucciones, con la opción de mostrar/ocultar el cronómetro -->
+    <div v-else-if="!terminado && !instruccionesVistas" class="tarjeta-ejercicio">
+      <IlustracionCronometro />
+      <p class="indicador-nivel">Nivel {{ numeroNivel }} · Subnivel {{ subnivelActual }} de 5</p>
+      <p class="instruccion-grande">
+        Vas a leer el MISMO texto 3 veces en voz alta. La idea es ver si cada
+        vez te sale más fluido. Si te distraes o le das a "Empezar" antes de
+        tiempo, puedes cancelar esa lectura y repetirla.
+      </p>
+
+      <div class="opcion-cronometro">
+        <label class="etiqueta-opcion">
+          <input type="checkbox" v-model="mostrarCronometro" />
+          Mostrar el cronómetro en números mientras leo
+        </label>
+        <p class="texto-ayuda-opcion">
+          {{ mostrarCronometro
+            ? 'Vas a ver los segundos corriendo mientras lees.'
+            : 'En vez del número, vas a ver un relojito animado, sin presionarte con el tiempo exacto.' }}
+        </p>
+      </div>
+
+      <button class="btn-primario" @click="instruccionesVistas = true">▶ Comenzar</button>
+    </div>
+
     <!-- Ronda en curso: se lee el MISMO texto 3 veces -->
     <div v-else-if="!terminado" class="tarjeta-ejercicio">
       <p class="indicador-nivel">Nivel {{ numeroNivel }} · Subnivel {{ subnivelActual }} de 5</p>
@@ -31,18 +56,38 @@
 
       <div class="caja-oracion">{{ enunciado }}</div>
 
-      <!-- Historial de las lecturas ya hechas en esta ronda -->
+      <!-- Historial de las lecturas ya guardadas en esta ronda -->
       <div v-if="lecturasPrevias.length > 0" class="historial-lecturas">
         <span v-for="(ppm, indice) in lecturasPrevias" :key="indice" class="chip-lectura">
           Lectura {{ indice + 1 }}: {{ ppm }} ppm
         </span>
       </div>
 
-      <div class="controles-cronometro">
-        <button v-if="!leyendo" class="btn-primario" @click="empezar">▶ Empezar</button>
-        <button v-else class="btn-primario btn-detener" @click="terminarLectura">⏹ Terminar</button>
+      <!-- Sub-estado 1: esperando que el usuario presione "Empezar" -->
+      <div v-if="!leyendo && !confirmandoLectura" class="controles-cronometro">
+        <button class="btn-primario" @click="empezar">▶ Empezar</button>
+      </div>
 
-        <span v-if="leyendo" class="tiempo-transcurrido">{{ tiempoTranscurrido }}s</span>
+      <!-- Sub-estado 2: lectura en curso -->
+      <div v-else-if="leyendo" class="controles-cronometro controles-leyendo">
+        <button class="btn-primario btn-detener" @click="terminarLectura">⏹ Terminar</button>
+        <button class="btn-secundario" @click="cancelarLectura">✕ Cancelar esta lectura</button>
+
+        <span v-if="mostrarCronometro" class="tiempo-transcurrido">{{ tiempoTranscurrido }}s</span>
+        <div v-else class="reloj-animado" aria-label="Cronómetro corriendo (oculto)">
+          <div class="esfera-reloj">
+            <div class="manecilla"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Sub-estado 3: ya terminó esta lectura, falta decidir si se guarda o se repite -->
+      <div v-else-if="confirmandoLectura" class="confirmacion-lectura">
+        <p class="texto-ppm-resultado">Leíste a <strong>{{ ppmPendiente }}</strong> palabras por minuto.</p>
+        <div class="botones-confirmacion">
+          <button class="btn-primario" @click="guardarLecturaYContinuar">✓ Guardar y continuar</button>
+          <button class="btn-secundario" @click="repetirLecturaActual">↺ Descartar y repetir</button>
+        </div>
       </div>
     </div>
 
@@ -79,11 +124,14 @@
 import { ref, computed, onMounted, onUnmounted } from 'vue';
 import api from '@/servicios/api';
 import { useProgresoStore } from '@/store/progreso.store';
+import IlustracionCronometro from '@/componentes/ilustraciones/IlustracionCronometro.vue'
 
 const progresoStore = useProgresoStore();
 
 const cargando = ref(true);
 const errorCarga = ref('');
+const instruccionesVistas = ref(false);
+const mostrarCronometro = ref(true); // el usuario decide esto en la pantalla de instrucciones
 const ultimaLecturaId = ref(null);
 const enunciado = ref('');
 const numeroNivel = ref(1);
@@ -92,6 +140,8 @@ const ejercicioCompletado = ref(false);
 const jugarLibre = ref(false);
 
 const leyendo = ref(false);
+const confirmandoLectura = ref(false); // true justo después de "Terminar", antes de decidir si se guarda
+const ppmPendiente = ref(0);
 const terminado = ref(false);
 const tiempoTranscurrido = ref(0);
 
@@ -108,6 +158,7 @@ async function cargarLectura(excluirId = null) {
   cargando.value = true;
   errorCarga.value = '';
   terminado.value = false;
+  instruccionesVistas.value = false;
   numeroLectura.value = 1;
   lecturasPrevias.value = [];
 
@@ -130,6 +181,7 @@ async function cargarLectura(excluirId = null) {
 // El tiempo empieza a correr de inmediato al presionar el botón
 function empezar() {
   leyendo.value = true;
+  confirmandoLectura.value = false;
   horaInicio = Date.now();
   tiempoTranscurrido.value = 0;
   intervaloReloj = setInterval(() => {
@@ -137,23 +189,45 @@ function empezar() {
   }, 1000);
 }
 
-async function terminarLectura() {
+// El usuario le dio a "Empezar" sin querer, o se distrajo a media
+// lectura: esto cancela por completo, como si nunca hubiera empezado
+function cancelarLectura() {
+  clearInterval(intervaloReloj);
+  leyendo.value = false;
+  confirmandoLectura.value = false;
+  tiempoTranscurrido.value = 0;
+}
+
+function terminarLectura() {
   clearInterval(intervaloReloj);
   leyendo.value = false;
 
   const segundosTotales = (Date.now() - horaInicio) / 1000;
   const numeroPalabras = enunciado.value.trim().split(/\s+/).length;
-  const ppm = Math.round(numeroPalabras / (segundosTotales / 60));
+  ppmPendiente.value = Math.round(numeroPalabras / (segundosTotales / 60));
 
-  lecturasPrevias.value.push(ppm);
+  // No se guarda todavía — primero se le pregunta al usuario si la
+  // quiere conservar o prefiere repetirla
+  confirmandoLectura.value = true;
+}
+
+async function guardarLecturaYContinuar() {
+  confirmandoLectura.value = false;
+  lecturasPrevias.value.push(ppmPendiente.value);
 
   if (numeroLectura.value < 3) {
-    // Todavía faltan repeticiones de este mismo texto
     numeroLectura.value++;
   } else {
-    // Ya son las 3 lecturas: se compara la última contra la primera
     await finalizarRonda();
   }
+}
+
+function repetirLecturaActual() {
+  // No se guarda el ppm pendiente, y se queda en el MISMO número de
+  // lectura para que el usuario la vuelva a intentar
+  confirmandoLectura.value = false;
+  ppmPendiente.value = 0;
+  tiempoTranscurrido.value = 0;
 }
 
 // La ronda cuenta como exitosa de DOS formas posibles:
@@ -195,6 +269,7 @@ async function finalizarRonda() {
 
 function reiniciarRonda() {
   leyendo.value = false;
+  confirmandoLectura.value = false;
   terminado.value = false;
   tiempoTranscurrido.value = 0;
   puntosObtenidos.value = 0;
@@ -234,6 +309,39 @@ onUnmounted(() => clearInterval(intervaloReloj));
   padding: 0.3rem 0.8rem;
   border-radius: 999px;
   margin-bottom: 0.6rem;
+}
+
+.instruccion-grande {
+  font-size: 1.05rem;
+  margin-bottom: 1.2rem;
+  line-height: 1.6;
+}
+
+.opcion-cronometro {
+  background: #f7f7f0;
+  border-radius: 12px;
+  padding: 1rem 1.2rem;
+  margin-bottom: 1.2rem;
+}
+
+.etiqueta-opcion {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.etiqueta-opcion input {
+  width: 18px;
+  height: 18px;
+  cursor: pointer;
+}
+
+.texto-ayuda-opcion {
+  font-size: 0.85rem;
+  color: var(--color-texto-secundario);
+  margin-top: 0.5rem;
 }
 
 .contador-lectura {
@@ -276,6 +384,11 @@ onUnmounted(() => clearInterval(intervaloReloj));
   display: flex;
   align-items: center;
   gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.controles-leyendo {
+  justify-content: space-between;
 }
 
 .btn-primario {
@@ -307,10 +420,76 @@ onUnmounted(() => clearInterval(intervaloReloj));
   background-color: #a93226;
 }
 
+.btn-secundario {
+  padding: 0.7rem 1.2rem;
+  background: white;
+  border: 1px solid var(--color-borde);
+  border-radius: var(--radio-boton);
+  cursor: pointer;
+  font-weight: 600;
+}
+
 .tiempo-transcurrido {
   font-size: 1.3rem;
   font-weight: 600;
   color: var(--color-texto-secundario);
+}
+
+/* Reloj animado, para cuando el usuario elige NO ver el número de segundos */
+.reloj-animado {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.esfera-reloj {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  border: 3px solid var(--color-primario);
+  position: relative;
+}
+
+.manecilla {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 3px;
+  height: 16px;
+  background: var(--color-primario);
+  border-radius: 2px;
+  transform-origin: bottom center;
+  transform: translate(-50%, -100%);
+  animation: girar-manecilla 2.5s linear infinite;
+}
+
+@keyframes girar-manecilla {
+  from { transform: translate(-50%, -100%) rotate(0deg); }
+  to { transform: translate(-50%, -100%) rotate(360deg); }
+}
+
+.confirmacion-lectura {
+  background: #f7f7f0;
+  border-radius: 12px;
+  padding: 1.3rem;
+  text-align: center;
+}
+
+.texto-ppm-resultado {
+  font-size: 1.1rem;
+  margin-bottom: 1rem;
+}
+
+.texto-ppm-resultado strong {
+  color: var(--color-primario);
+  font-size: 1.3rem;
+}
+
+.botones-confirmacion {
+  display: flex;
+  gap: 0.8rem;
+  justify-content: center;
+  flex-wrap: wrap;
 }
 
 .resultado.incorrecto {
@@ -373,14 +552,6 @@ onUnmounted(() => clearInterval(intervaloReloj));
 
 .botones-final > * {
   flex: 1;
-}
-
-.btn-secundario {
-  padding: 0.7rem;
-  background: white;
-  border: 1px solid var(--color-borde);
-  border-radius: var(--radio-boton);
-  cursor: pointer;
 }
 
 .btn-enlace {
