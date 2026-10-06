@@ -133,7 +133,7 @@ const agregarEstilos = () => {
     }
     #contenedor-libro h1, #contenedor-libro h2,
     #contenedor-libro h3, #contenedor-libro h4 {
-      color: ${est.color} !important; margin-top: 24px; margin-bottom: 12px;
+      color: ${est.color} !important; font-family: ${est.fontFamily} !important; margin-top: 24px; margin-bottom: 12px;
     }
     #contenedor-libro p {
       color: ${est.color} !important; margin-bottom: 14px; text-align: justify;

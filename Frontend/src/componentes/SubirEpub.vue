@@ -68,7 +68,7 @@
 
 <script setup>
 import { ref, onMounted } from 'vue'
-import axios from 'axios'
+import api from '@/servicios/api'
 
 const emit = defineEmits(['epub-cargado'])
 
@@ -97,7 +97,7 @@ const subirArchivo = async () => {
     const formData = new FormData()
     formData.append('epub', archivo.value)
 
-    await axios.post('http://localhost:3000/api/lector/subir', formData, {
+    await api.post('/lector/subir', formData, {
       headers: { 'Content-Type': 'multipart/form-data' }
     })
 
@@ -111,7 +111,7 @@ const subirArchivo = async () => {
 
 const cargarLista = async () => {
   try {
-    const respuesta = await axios.get('http://localhost:3000/api/lector/lista')
+    const respuesta = await api.get('/lector/lista')
     epubsDisponibles.value = respuesta.data.archivos
   } catch (err) {
     error.value = 'Error al cargar la lista de archivos.'
@@ -121,7 +121,7 @@ const cargarLista = async () => {
 const abrirSeleccionado = async () => {
   if (!epubSeleccionado.value) return
   try {
-    const respuesta = await axios.get(`http://localhost:3000/api/lector/url/${epubSeleccionado.value}`)
+    const respuesta = await api.get(`/lector/url/${epubSeleccionado.value}`)
     emit('epub-cargado', respuesta.data.url)
   } catch (err) {
     error.value = 'Error al abrir el archivo.'
@@ -131,7 +131,7 @@ const abrirSeleccionado = async () => {
 const eliminarEpub = async (nombre) => {
   if (!confirm(`¿Seguro que quieres eliminar "${nombre}"?`)) return
   try {
-    await axios.delete(`http://localhost:3000/api/lector/eliminar/${nombre}`)
+    await api.delete(`/lector/eliminar/${nombre}`)
     if (epubSeleccionado.value === nombre) epubSeleccionado.value = ''
     await cargarLista()
   } catch (err) {

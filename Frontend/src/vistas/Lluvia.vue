@@ -34,6 +34,10 @@
         tiempo van apareciendo letras nuevas y todo cae más rápido.
       </p>
       <p class="instruccion-meta">Necesitas {{ umbralParaAvanzar }} aciertos antes de perder tus vidas para subir de subnivel.</p>
+      <p class="instruccion-meta">
+        Si fallas 3 veces seguidas, las letras caen más lento hasta que aciertes una. La ronda dura
+        máximo 5 minutos. Tienes 3 intentos por subnivel; al agotarlos puedes ver la solución.
+      </p>
       <button class="btn-primario" @click="comenzarJuego">▶ Comenzar</button>
     </div>
 
@@ -74,6 +78,8 @@
         </div>
       </div>
 
+      <!-- RF_24 / RN_06: pista visual tras 3 fallos seguidos -->
+      <p v-if="ayudaActiva" class="texto-ayuda">💡 Ayuda: las letras caen más lento hasta que aciertes una.</p>
       <p v-if="letraNuevaRecienDesbloqueada" class="texto-letra-nueva">✨ ¡Nueva letra en juego: {{ letraNuevaRecienDesbloqueada }}!</p>
       <p v-else-if="rachaActual >= 2" class="texto-racha">🔥 ¡Racha x{{ rachaActual }}!</p>
     </div>
@@ -103,6 +109,16 @@
         </div>
       </div>
 
+      <PanelIntentos
+        :intentos-usados="intentos.intentosUsados.value"
+        :maximo="intentos.MAX_INTENTOS"
+        :agotados="intentos.agotados.value"
+        :superada="avanzaste"
+        :solucion="solucionRonda"
+        nota="En Lluvia no hay una sola respuesta: hay que atrapar solo la letra objetivo que se marca arriba. Estas fueron las letras objetivo de tu ronda:"
+        @cerrar="cerrarSolucion"
+      />
+
       <div class="botones-final">
         <button class="btn-secundario" @click="reiniciar">Intentar de nuevo</button>
         <router-link to="/ejercicios" class="btn-primario btn-enlace">Volver a ejercicios</router-link>
@@ -117,12 +133,22 @@ import api from '@/servicios/api';
 import { useProgresoStore } from '@/store/progreso.store';
 import { useSonidosJuego } from '../composables/useSonidosJuego';
 import IlustracionLluvia from '@/componentes/ilustraciones/IlustracionLluvia.vue'
+import PanelIntentos from '@/componentes/PanelIntentos.vue'
+import { useIntentosEjercicio } from '../composables/useIntentosEjercicio'
 
 const progresoStore = useProgresoStore();
 const { sonidoAcierto, sonidoError, sonidoVidaPerdida } = useSonidosJuego();
+const intentos = useIntentosEjercicio('CU-EJ-05'); // RN_07: máximo 3 intentos por subnivel
 
 const ALTURA_AREA = 350; // px, debe coincidir con el CSS de .area-caida
 const VIDAS_INICIALES = 4;
+
+// RN_08 / RN_21: ningún ejercicio dura más de 5 minutos
+const TIEMPO_MAXIMO_RONDA_MS = 5 * 60 * 1000;
+
+// RN_06 / RF_24: tras 3 fallos seguidos las letras caen más lento
+const FALLOS_PARA_AYUDA = 3;
+const FACTOR_VELOCIDAD_CON_AYUDA = 1.4; // cae 40% más lento
 
 
 // ===== Ajustes de dificultad progresiva (mientras más dura la ronda, más difícil) =====
@@ -169,6 +195,9 @@ const puntosGanados = ref(0);
 const rachaActual = ref(0);
 const rachaMaxima = ref(0);
 const efectosFlotantes = ref([]);
+const fallosSeguidos = ref(0); // se reinicia cada vez que se atrapa la letra correcta
+const solucionRonda = ref([]); // letras objetivo que salieron en la ronda (RF_25)
+const ayudaActiva = computed(() => fallosSeguidos.value >= FALLOS_PARA_AYUDA);
 const letraNuevaRecienDesbloqueada = ref(''); // aviso breve cuando se agrega una letra nueva al juego
 
 let idSiguiente = 0;
@@ -185,6 +214,7 @@ let msParaSiguienteSpawn = 0;
 let msDesdeUltimaRotacion = 0;
 let msDesdeUltimoAumento = 0;
 let factorDificultadActual = 1;
+const objetivosVistos = new Set(); // letras objetivo que salieron en la ronda (para la solución)
 
 async function cargarConfiguracion() {
   cargando.value = true;
@@ -196,6 +226,7 @@ async function cargarConfiguracion() {
     numeroNivel.value = respuesta.data.numeroNivel;
     subnivelActual.value = respuesta.data.subnivel;
     ejercicioCompletado.value = respuesta.data.ejercicioCompletado;
+    intentos.cargar(numeroNivel.value, subnivelActual.value);
   } catch (error) {
     console.error('No se pudo cargar la configuración:', error);
     errorCarga.value = error.response?.data?.mensaje || 'No se pudo conectar con el servidor.';
@@ -211,10 +242,12 @@ function elegirNuevoObjetivo() {
   const pool = letrasDesbloqueadas.value;
   if (pool.length <= 1) {
     objetivoActual.value = pool[0];
+    objetivosVistos.add(objetivoActual.value);
     return;
   }
   const candidatas = pool.filter((l) => l !== objetivoActual.value);
   objetivoActual.value = candidatas[Math.floor(Math.random() * candidatas.length)];
+  objetivosVistos.add(objetivoActual.value);
 }
 
 // Agrega UNA letra nueva del pool completo a las letras desbloqueadas,
@@ -253,6 +286,9 @@ function comenzarJuego() {
   msDesdeUltimaRotacion = 0;
   msDesdeUltimoAumento = 0;
   factorDificultadActual = 1;
+  fallosSeguidos.value = 0;
+  solucionRonda.value = [];
+  objetivosVistos.clear();
 
   elegirNuevoObjetivo();
 
@@ -273,7 +309,10 @@ function nacerLetra() {
         Math.floor(Math.random() * Math.max(1, pool.length - 1))
       ] || objetivoActual.value;
 
-  const velocidadPropia = Math.max(VELOCIDAD_MINIMA_MS, velocidadBaseMs.value / factorDificultadActual);
+  // Con la ayuda activa (3 fallos seguidos) las letras caen más lento
+  const velocidadPropia =
+    Math.max(VELOCIDAD_MINIMA_MS, velocidadBaseMs.value / factorDificultadActual) *
+    (ayudaActiva.value ? FACTOR_VELOCIDAD_CON_AYUDA : 1);
 
   letrasActivas.value.push({
     id: idSiguiente++,
@@ -300,6 +339,7 @@ function mostrarEfectoFlotante(letra, texto, tipo) {
 function perderVida() {
   vidas.value--;
   rachaActual.value = 0;
+  fallosSeguidos.value++;
   sonidoVidaPerdida();
   if (vidas.value <= 0) {
     finalizarJuego();
@@ -314,6 +354,7 @@ function atraparLetra(letra) {
 
   if (eraObjetivo) {
     aciertos.value++;
+    fallosSeguidos.value = 0;
     rachaActual.value++;
     rachaMaxima.value = Math.max(rachaMaxima.value, rachaActual.value);
     sonidoAcierto();
@@ -335,6 +376,13 @@ function iniciarGameLoop() {
     if (!jugando.value) return;
 
     msTranscurridos += MS_POR_PASO;
+
+    // RN_08 / RN_21: la ronda termina sola a los 5 minutos
+    if (msTranscurridos >= TIEMPO_MAXIMO_RONDA_MS) {
+      finalizarJuego();
+      return;
+    }
+
     msParaSiguienteSpawn -= MS_POR_PASO;
     msDesdeUltimaRotacion += MS_POR_PASO;
     msDesdeUltimoAumento += MS_POR_PASO;
@@ -392,6 +440,15 @@ function finalizarJuego() {
 
   avanzaste.value = aciertos.value >= umbralParaAvanzar.value;
 
+  // RN_07 / RF_25: se cuenta el intento y se prepara la "solución"
+  intentos.registrarRonda(avanzaste.value);
+  solucionRonda.value = [
+    {
+      titulo: 'Letras que tenías que atrapar',
+      correcta: [...objetivosVistos].join(', '),
+    },
+  ];
+
   // 100 puntos exactos si llegaste a la meta (esto es lo único que el
   // sistema de niveles revisa para decidir si subes de subnivel);
   // si no, una puntuación parcial proporcional, limitada a 90 para
@@ -412,6 +469,12 @@ function finalizarJuego() {
 function reiniciar() {
   terminado.value = false;
   cargarConfiguracion();
+}
+
+// Después de ver la solución, los intentos se reinician (RF_25)
+function cerrarSolucion() {
+  intentos.reiniciar();
+  reiniciar();
 }
 
 function manejarTecla(evento) {
@@ -674,5 +737,12 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   justify-content: center;
+}
+
+.texto-ayuda {
+  text-align: center;
+  font-weight: 600;
+  color: var(--color-primario);
+  margin-top: 0.5rem;
 }
 </style>

@@ -18,7 +18,7 @@
 <script setup>
 import { ref, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import axios from 'axios'
+import api from '@/servicios/api'
 import VistaLector from '../componentes/VistaLector.vue'
 import { useConfiguracionStore } from '../store/configuracion.store'
 
@@ -41,7 +41,7 @@ async function cargarDesdeQuery() {
 
   cargando.value = true
   try {
-    const respuesta = await axios.get(`http://localhost:3000/api/lector/url/${nombre}`)
+    const respuesta = await api.get(`/lector/url/${nombre}`)
     archivoUrl.value = respuesta.data.url
     nombreArchivo.value = nombre
   } catch (err) {

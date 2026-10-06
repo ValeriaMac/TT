@@ -50,15 +50,32 @@
     <main :class="{ 'con-nav-fijo': authStore.estaAutenticado }">
       <RouterView />
     </main>
+
+    <!-- RF_26: aviso de falta de conexión y resultados por sincronizar -->
+    <BannerConexion v-if="authStore.estaAutenticado" />
   </div>
 </template>
 
 <script setup>
+import { onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from './store/auth.store'
+import { useProgresoStore } from './store/progreso.store'
+import BannerConexion from './componentes/BannerConexion.vue'
 
 const router = useRouter()
 const authStore = useAuthStore()
+const progresoStore = useProgresoStore()
+
+// RF_26: al abrir la app (y cada vez que se recupera el internet) se
+// mandan al servidor los resultados que se guardaron sin conexión
+onMounted(() => progresoStore.iniciarSincronizacion())
+watch(
+  () => authStore.estaAutenticado,
+  (iniciada) => {
+    if (iniciada) progresoStore.sincronizarPendientes()
+  }
+)
 
 function manejarCerrarSesion() {
   authStore.cerrarSesion()

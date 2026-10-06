@@ -27,6 +27,10 @@
         preguntas se responden de memoria, no viendo el texto al mismo tiempo.
       </p>
       <p class="instruccion-meta">Necesitas acertar TODAS las preguntas para subir de subnivel.</p>
+      <p class="instruccion-meta">
+        Si fallas 3 preguntas seguidas, el texto vuelve a mostrarse como pista. Tienes 3 intentos
+        por subnivel; al agotarlos puedes ver la solución.
+      </p>
       <button class="btn-primario" @click="instruccionesVistas = true">▶ Comenzar</button>
     </div>
 
@@ -45,6 +49,12 @@
     <!-- Fase 2: ronda de preguntas en curso (el texto YA NO se muestra aquí a propósito) -->
     <div v-else-if="!terminado" class="tarjeta-ejercicio">
       <p class="indicador-nivel">Nivel {{ numeroNivel }} · Subnivel {{ subnivelActual }} de 5</p>
+
+      <!-- RF_24 / RN_06: tras 3 fallos seguidos se muestra el texto otra vez como pista -->
+      <div v-if="ayudaActiva" class="caja-lectura caja-pista">
+        <p class="etiqueta-lectura">💡 Pista: aquí tienes el texto otra vez</p>
+        {{ textoLectura }}
+      </div>
 
       <p class="pregunta-actual">{{ preguntaActual?.pregunta }}</p>
 
@@ -103,6 +113,16 @@
         </div>
       </div>
 
+      <PanelIntentos
+        :intentos-usados="intentos.intentosUsados.value"
+        :maximo="intentos.MAX_INTENTOS"
+        :agotados="intentos.agotados.value"
+        :superada="aciertos === preguntas.length"
+        :solucion="solucionRonda"
+        nota="Estas son las preguntas que fallaste, con su respuesta correcta:"
+        @cerrar="cerrarSolucion"
+      />
+
       <div class="botones-final">
         <button class="btn-secundario" @click="reiniciar">Intentar de nuevo</button>
         <router-link to="/ejercicios" class="btn-primario btn-enlace">Volver a ejercicios</router-link>
@@ -117,10 +137,13 @@ import api from '@/servicios/api';
 import { useProgresoStore } from '@/store/progreso.store';
 import { useSonidosJuego } from '../composables/useSonidosJuego';
 import IlustracionTrivia from '@/componentes/ilustraciones/IlustracionTrivia.vue';
+import PanelIntentos from '@/componentes/PanelIntentos.vue';
+import { useIntentosEjercicio } from '../composables/useIntentosEjercicio';
 
 
 const progresoStore = useProgresoStore();
 const { sonidoAcierto, sonidoError } = useSonidosJuego();
+const intentos = useIntentosEjercicio('CU-EJ-01'); // RN_07: máximo 3 intentos por subnivel
 
 const cargando = ref(true);
 const errorCarga = ref('');
@@ -135,6 +158,8 @@ const verificando = ref(false); // true mientras se espera la respuesta del back
 const ultimoResultado = ref(null);
 const aciertos = ref(0);
 const erroresCount = ref(0);
+const erroresConsecutivos = ref(0); // RN_06: fallos seguidos, para la pista visual
+const solucionRonda = ref([]); // preguntas falladas con su respuesta correcta (RF_25)
 const terminado = ref(false);
 
 const numeroNivel = ref(1);
@@ -143,6 +168,8 @@ const ejercicioCompletado = ref(false);
 const jugarLibre = ref(false);
 
 const preguntaActual = computed(() => preguntas.value[indiceActual.value]);
+// La pista aparece desde la pregunta SIGUIENTE al tercer fallo seguido
+const ayudaActiva = computed(() => erroresConsecutivos.value >= 3 && !mostrandoResultado.value);
 const esUltimaPregunta = computed(() => indiceActual.value === preguntas.value.length - 1);
 
 // Se escala a 100 en una ronda perfecta sin importar cuántas preguntas
@@ -161,6 +188,7 @@ async function cargarPreguntas() {
     numeroNivel.value = respuesta.data.numeroNivel;
     subnivelActual.value = respuesta.data.subnivel;
     ejercicioCompletado.value = respuesta.data.ejercicioCompletado;
+    intentos.cargar(numeroNivel.value, subnivelActual.value);
   } catch (error) {
     console.error('No se pudieron cargar las preguntas:', error);
     errorCarga.value = error.response?.data?.mensaje || 'No se pudo conectar con el servidor.';
@@ -193,9 +221,16 @@ async function responder() {
 
     if (respuesta.data.correcto) {
       aciertos.value++;
+      erroresConsecutivos.value = 0;
       sonidoAcierto();
     } else {
       erroresCount.value++;
+      erroresConsecutivos.value++;
+      solucionRonda.value.push({
+        titulo: preguntaActual.value.pregunta,
+        correcta: respuesta.data.respuestaCorrecta,
+        tuRespuesta: opcionElegida.value,
+      });
       sonidoError();
     }
   } catch (error) {
@@ -218,6 +253,7 @@ async function siguientePregunta() {
 
 async function finalizarRonda() {
   terminado.value = true;
+  intentos.registrarRonda(aciertos.value === preguntas.value.length);
   await progresoStore.registrarResultado({
     ejercicioClave: 'CU-EJ-01',
     nivelNumero: numeroNivel.value,
@@ -234,10 +270,18 @@ function reiniciar() {
   ultimoResultado.value = null;
   aciertos.value = 0;
   erroresCount.value = 0;
+  erroresConsecutivos.value = 0;
+  solucionRonda.value = [];
   terminado.value = false;
   instruccionesVistas.value = false;
   faseLectura.value = true;
   cargarPreguntas();
+}
+
+// Después de ver la solución, los intentos se reinician (RF_25)
+function cerrarSolucion() {
+  intentos.reiniciar();
+  reiniciar();
 }
 
 onMounted(cargarPreguntas);
@@ -444,5 +488,12 @@ onMounted(cargarPreguntas);
 .resultado.incorrecto {
   color: #c0392b;
   margin-bottom: 1rem;
+}
+
+.caja-pista {
+  border: 2px dashed var(--color-primario);
+  margin-bottom: 1rem;
+  max-height: 14rem;
+  overflow-y: auto;
 }
 </style>

@@ -93,7 +93,6 @@
 
 <script setup>
 import { ref, onMounted } from 'vue'
-import axios from 'axios' // solo para la subida de archivos (multipart), el resto usa "api"
 import api from '@/servicios/api'
 import { useRouter } from 'vue-router'
 
@@ -134,14 +133,10 @@ const subirArchivo = async () => {
     const formData = new FormData()
     formData.append('epub', archivo.value)
 
-    // Este endpoint necesita "multipart/form-data", por eso usa axios
-    // directo en vez del cliente "api" — pero sí toma el token de la
-    // sesión, igual que los demás
-    await axios.post('http://localhost:3000/api/lector/subir', formData, {
-      headers: {
-        'Content-Type': 'multipart/form-data',
-        Authorization: `Bearer ${localStorage.getItem('token')}`,
-      }
+    // Este endpoint necesita "multipart/form-data"; el cliente "api" ya
+    // manda el token de la sesión y usa la URL del servidor configurada
+    await api.post('/lector/subir', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
     })
 
     await cargarListaEpubs()

@@ -35,6 +35,9 @@
         error se va a resaltar para ayudarte en la siguiente.
       </p>
       <p class="instruccion-meta">Necesitas las {{ preguntas.length }} correctas para subir de subnivel.</p>
+      <p class="instruccion-meta">
+        Tienes 3 intentos por subnivel; al agotarlos puedes ver la solución.
+      </p>
       <button class="btn-primario" @click="instruccionesVistas = true">▶ Comenzar</button>
     </div>
 
@@ -95,6 +98,16 @@
         </div>
       </div>
 
+      <PanelIntentos
+        :intentos-usados="intentos.intentosUsados.value"
+        :maximo="intentos.MAX_INTENTOS"
+        :agotados="intentos.agotados.value"
+        :superada="rondaFuePerfecta"
+        :solucion="solucionRonda"
+        nota="Estas son las oraciones que fallaste, con la palabra correcta:"
+        @cerrar="cerrarSolucion"
+      />
+
       <div class="botones-final">
         <button class="btn-secundario" @click="reiniciar">Intentar de nuevo</button>
         <router-link to="/ejercicios" class="btn-primario btn-enlace">Volver a ejercicios</router-link>
@@ -109,9 +122,12 @@ import api from '@/servicios/api';
 import { useProgresoStore } from '@/store/progreso.store';
 import { useSonidosJuego } from '../composables/useSonidosJuego';
 import IlustracionAtrapaElError from '@/componentes/ilustraciones/IlustracionAtrapaElError.vue'
+import PanelIntentos from '@/componentes/PanelIntentos.vue'
+import { useIntentosEjercicio } from '../composables/useIntentosEjercicio'
 
 const progresoStore = useProgresoStore();
 const { sonidoAcierto, sonidoError } = useSonidosJuego();
+const intentos = useIntentosEjercicio('CU-EJ-03'); // RN_07: máximo 3 intentos por subnivel
 
 const PUNTOS_POR_ACIERTO = 20; // igual que en la Tabla de reglas técnicas del ejercicio
 const TOTAL_PREGUNTAS_RONDA = 5;
@@ -135,6 +151,7 @@ const ultimoResultado = ref(null);
 const aciertos = ref(0);
 const erroresCount = ref(0);
 const erroresConsecutivos = ref(0);
+const solucionRonda = ref([]); // oraciones falladas con su palabra correcta (RF_25)
 const terminado = ref(false);
 const palabraAResaltar = ref(null); // se activa tras 3 fallos seguidos (RN de dificultad)
 
@@ -161,6 +178,7 @@ async function cargarPreguntas() {
     numeroNivel.value = respuesta.data.numeroNivel;
     subnivelActual.value = respuesta.data.subnivel;
     ejercicioCompletado.value = respuesta.data.ejercicioCompletado;
+    intentos.cargar(numeroNivel.value, subnivelActual.value);
   } catch (error) {
     console.error('Error al cargar las preguntas:', error);
     errorCarga.value = error.response?.data?.mensaje || 'No se pudo conectar con el servidor.';
@@ -190,6 +208,11 @@ async function manejarRespuesta() {
     } else {
       erroresCount.value++;
       erroresConsecutivos.value++;
+      solucionRonda.value.push({
+        titulo: preguntaActual.value.enunciado,
+        correcta: respuesta.data.respuestaCorrecta,
+        tuRespuesta: respuestaUsuario.value,
+      });
       sonidoError();
       // A partir del 3er fallo seguido, se prepara el resaltado para
       // la SIGUIENTE pregunta
@@ -218,6 +241,7 @@ async function siguientePregunta() {
 
 async function finalizarRonda() {
   terminado.value = true;
+  intentos.registrarRonda(aciertos.value === TOTAL_PREGUNTAS_RONDA);
 
   await progresoStore.registrarResultado({
     ejercicioClave: 'CU-EJ-03',
@@ -240,10 +264,17 @@ function reiniciar() {
   aciertos.value = 0;
   erroresCount.value = 0;
   erroresConsecutivos.value = 0;
+  solucionRonda.value = [];
   terminado.value = false;
   palabraAResaltar.value = null;
   instruccionesVistas.value = false;
   cargarPreguntas();
+}
+
+// Después de ver la solución, los intentos se reinician (RF_25)
+function cerrarSolucion() {
+  intentos.reiniciar();
+  reiniciar();
 }
 
 onMounted(cargarPreguntas);

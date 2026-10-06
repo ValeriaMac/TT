@@ -30,6 +30,10 @@
         Puedes usar el botón de cada letra, o las flechas ← → de tu teclado.
       </p>
       <p class="instruccion-meta">Necesitas acertar todas para subir de subnivel.</p>
+      <p class="instruccion-meta">
+        Si fallas 3 tarjetas seguidas, te damos más tiempo ({{ TIEMPO_CON_AYUDA }} segundos) hasta que aciertes una.
+        Tienes 3 intentos por subnivel; al agotarlos puedes ver la solución.
+      </p>
       <button class="btn-primario" @click="comenzarRonda">▶ Comenzar</button>
     </div>
 
@@ -46,8 +50,13 @@
         {{ tarjetaActual?.palabra }}
       </div>
 
-      <div class="barra-tiempo-contenedor">
-        <div class="barra-tiempo" :style="{ width: (tiempoRestante / TIEMPO_POR_TARJETA * 100) + '%' }"></div>
+      <!-- RF_24 / RN_06: pista visual tras 3 fallos seguidos -->
+      <p v-if="ayudaActiva" class="aviso-ayuda">
+        💡 Ayuda activada: tienes {{ TIEMPO_CON_AYUDA }} segundos por tarjeta hasta que aciertes una.
+      </p>
+
+      <div class="barra-tiempo-contenedor" :class="{ 'barra-con-ayuda': ayudaActiva }">
+        <div class="barra-tiempo" :style="{ width: (tiempoRestante / tiempoPorTarjeta * 100) + '%' }"></div>
       </div>
 
       <div class="botones-decision">
@@ -61,9 +70,10 @@
 
       <p v-if="mostrandoResultado" class="resultado" :class="{ correcto: ultimoResultado.correcto, incorrecto: !ultimoResultado.correcto }">
         <span v-if="ultimoResultado.correcto">✓ ¡Bien!</span>
-        <span v-else>
+        <span v-else-if="ultimoResultado.respuestaCorrecta">
           ✕ Era con {{ ultimoResultado.respuestaCorrecta === 'izquierda' ? tarjetaActual?.letraIzquierda : tarjetaActual?.letraDerecha }}
         </span>
+        <span v-else>✕ No se pudo comprobar la respuesta</span>
       </p>
 
       <p class="contador-tarjetas">Tarjeta {{ indiceActual + 1 }} de {{ tarjetas.length }}</p>
@@ -92,6 +102,16 @@
         </div>
       </div>
 
+      <PanelIntentos
+        :intentos-usados="intentos.intentosUsados.value"
+        :maximo="intentos.MAX_INTENTOS"
+        :agotados="intentos.agotados.value"
+        :superada="aciertos === tarjetas.length"
+        :solucion="solucionRonda"
+        nota="Estas son las tarjetas que fallaste, con la letra correcta:"
+        @cerrar="cerrarSolucion"
+      />
+
       <div class="botones-final">
         <button class="btn-secundario" @click="reiniciar">Intentar de nuevo</button>
         <router-link to="/ejercicios" class="btn-primario btn-enlace">Volver a ejercicios</router-link>
@@ -106,13 +126,17 @@ import api from '@/servicios/api';
 import { useProgresoStore } from '@/store/progreso.store';
 import { useSonidosJuego } from '../composables/useSonidosJuego';
 import IlustracionTarjetas from '@/componentes/ilustraciones/IlustracionTarjetas.vue'
+import PanelIntentos from '@/componentes/PanelIntentos.vue'
+import { useIntentosEjercicio } from '../composables/useIntentosEjercicio'
 
 
 
 const progresoStore = useProgresoStore();
 const { sonidoAcierto, sonidoError } = useSonidosJuego();
+const intentos = useIntentosEjercicio('CU-EJ-04'); // RN_07: máximo 3 intentos por subnivel
 
 const TIEMPO_POR_TARJETA = 5; // segundos para decidir cada tarjeta
+const TIEMPO_CON_AYUDA = 8; // RN_06: segundos por tarjeta tras 3 fallos seguidos
 
 const cargando = ref(true);
 const errorCarga = ref('');
@@ -123,6 +147,8 @@ const mostrandoResultado = ref(false);
 const ultimoResultado = ref(null);
 const aciertos = ref(0);
 const erroresCount = ref(0);
+const erroresConsecutivos = ref(0); // RN_06: fallos seguidos, para la ayuda
+const solucionRonda = ref([]); // tarjetas falladas con su letra correcta (RF_25)
 const terminado = ref(false);
 const tiempoRestante = ref(TIEMPO_POR_TARJETA);
 
@@ -134,6 +160,11 @@ const jugarLibre = ref(false);
 let intervaloTiempo = null;
 
 const tarjetaActual = computed(() => tarjetas.value[indiceActual.value]);
+
+// Tras 3 fallos seguidos se da más tiempo por tarjeta; vuelve a la
+// normalidad en cuanto la persona acierta una
+const ayudaActiva = computed(() => erroresConsecutivos.value >= 3);
+const tiempoPorTarjeta = computed(() => (ayudaActiva.value ? TIEMPO_CON_AYUDA : TIEMPO_POR_TARJETA));
 
 // Se escala a 100 en una ronda perfecta SIN IMPORTAR cuántas tarjetas
 // tenga la ronda (puede variar según cuánto contenido haya por
@@ -155,6 +186,7 @@ async function cargarTarjetas() {
     numeroNivel.value = respuesta.data.numeroNivel;
     subnivelActual.value = respuesta.data.subnivel;
     ejercicioCompletado.value = respuesta.data.ejercicioCompletado;
+    intentos.cargar(numeroNivel.value, subnivelActual.value);
   } catch (error) {
     console.error('No se pudieron cargar las tarjetas:', error);
     errorCarga.value = error.response?.data?.mensaje || 'No se pudo conectar con el servidor.';
@@ -173,7 +205,7 @@ function comenzarRonda() {
 
 function iniciarTemporizadorTarjeta() {
   clearInterval(intervaloTiempo);
-  tiempoRestante.value = TIEMPO_POR_TARJETA;
+  tiempoRestante.value = tiempoPorTarjeta.value;
 
   intervaloTiempo = setInterval(() => {
     tiempoRestante.value -= 0.1;
@@ -189,23 +221,44 @@ async function responder(respuestaUsuario) {
   if (mostrandoResultado.value) return;
   clearInterval(intervaloTiempo);
 
-  if (respuestaUsuario === null) {
-    // Se agotó el tiempo: no se llama al backend, se marca directo como error
-    ultimoResultado.value = { correcto: false, respuestaCorrecta: 'tiempo agotado' };
-    erroresCount.value++;
-    sonidoError();
-  } else {
+  const tarjeta = tarjetaActual.value;
+  let resultado;
+
+  try {
+    // Si se acabó el tiempo (respuestaUsuario === null) también se consulta
+    // al servidor, mandando una respuesta vacía, solo para saber cuál era
+    // la correcta y poder mostrarla en la solución
     const respuesta = await api.post('/ejercicios/tarjetas/verificar', {
-      tarjetaId: tarjetaActual.value.id,
-      respuestaUsuario,
+      tarjetaId: tarjeta.id,
+      respuestaUsuario: respuestaUsuario ?? 'tiempo_agotado',
     });
-    ultimoResultado.value = respuesta.data;
-    if (respuesta.data.correcto) {
-      aciertos.value++;
-      sonidoAcierto();
-    } else {
-      erroresCount.value++;
-      sonidoError();
+    resultado = respuesta.data;
+  } catch (error) {
+    console.error('No se pudo verificar la tarjeta:', error);
+    resultado = { correcto: false, respuestaCorrecta: null };
+  }
+
+  ultimoResultado.value = resultado;
+
+  if (respuestaUsuario !== null && resultado.correcto) {
+    aciertos.value++;
+    erroresConsecutivos.value = 0;
+    sonidoAcierto();
+  } else {
+    erroresCount.value++;
+    erroresConsecutivos.value++;
+    sonidoError();
+    if (resultado.respuestaCorrecta) {
+      const letraCorrecta =
+        resultado.respuestaCorrecta === 'izquierda' ? tarjeta.letraIzquierda : tarjeta.letraDerecha;
+      solucionRonda.value.push({
+        titulo: tarjeta.palabra,
+        correcta: `Va con la letra ${letraCorrecta}`,
+        tuRespuesta:
+          respuestaUsuario === null
+            ? 'Se acabó el tiempo'
+            : `Letra ${respuestaUsuario === 'izquierda' ? tarjeta.letraIzquierda : tarjeta.letraDerecha}`,
+      });
     }
   }
 
@@ -226,6 +279,7 @@ async function responder(respuestaUsuario) {
 async function finalizarRonda() {
   jugando.value = false;
   terminado.value = true;
+  intentos.registrarRonda(aciertos.value === tarjetas.value.length);
 
   await progresoStore.registrarResultado({
     ejercicioClave: 'CU-EJ-04',
@@ -243,8 +297,16 @@ function reiniciar() {
   ultimoResultado.value = null;
   aciertos.value = 0;
   erroresCount.value = 0;
+  erroresConsecutivos.value = 0;
+  solucionRonda.value = [];
   terminado.value = false;
   cargarTarjetas();
+}
+
+// Después de ver la solución, los intentos se reinician (RF_25)
+function cerrarSolucion() {
+  intentos.reiniciar();
+  reiniciar();
 }
 
 // Soporte de teclado: flecha izquierda = B, flecha derecha = D —
@@ -485,5 +547,17 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   justify-content: center;
+}
+
+.aviso-ayuda {
+  text-align: center;
+  font-size: 0.9rem;
+  margin-bottom: 0.6rem;
+  color: var(--color-primario);
+  font-weight: 600;
+}
+
+.barra-con-ayuda {
+  outline: 2px solid var(--color-primario);
 }
 </style>

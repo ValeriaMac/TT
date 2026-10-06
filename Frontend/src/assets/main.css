@@ -30,7 +30,8 @@ a,
   --color-texto-secundario: #7a7a6a;
   --radio-tarjeta: 16px;
   --radio-boton: 999px;
-  --fuente-encabezados: 'Baloo 2', 'Comic Neue', cursive;
+  --fuente-sistema: 'OpenDyslexic', 'Comic Neue', Verdana, sans-serif;
+  --fuente-encabezados: var(--fuente-sistema);
 }
 
 body {
