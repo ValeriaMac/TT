@@ -771,6 +771,14 @@ function ignorarPalabra(error) {
     align-items: stretch;
   }
 
+  /* El título tiene un ancho propio por la fuente grande; en celular
+     debe ajustarse al ancho de la tarjeta */
+  .input-titulo {
+    width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+  }
+
   .select-plantilla,
   .btn-guardar {
     width: 100%;

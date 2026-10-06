@@ -3,7 +3,7 @@
     <nav v-if="authStore.estaAutenticado" class="navegacion-principal" aria-label="Navegación principal">
       <span class="logo-app">lex</span>
 
-      <div class="enlaces-nav">
+      <div class="enlaces-nav" :class="{ abierto: menuAbierto }" id="menu-enlaces">
         <router-link to="/inicio" class="enlace-nav">
           <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
           Inicio
@@ -45,6 +45,18 @@
         <router-link to="/perfil" class="nombre-usuario">👤 {{ authStore.usuario?.nombre }}</router-link>
         <button @click="manejarCerrarSesion" class="btn-secundario">Salir</button>
       </div>
+
+      <!-- Botón de menú: solo se ve en pantallas chicas (celular) -->
+      <button
+        class="btn-menu"
+        type="button"
+        :aria-expanded="menuAbierto"
+        aria-controls="menu-enlaces"
+        aria-label="Abrir o cerrar el menú"
+        @click="menuAbierto = !menuAbierto"
+      >
+        <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path v-if="!menuAbierto" d="M3 6h18M3 12h18M3 18h18"/><path v-else d="M6 6l12 12M18 6L6 18"/></svg>
+      </button>
     </nav>
 
     <main :class="{ 'con-nav-fijo': authStore.estaAutenticado }">
@@ -57,13 +69,18 @@
 </template>
 
 <script setup>
-import { onMounted, watch, nextTick } from 'vue'
-import { useRouter } from 'vue-router'
+import { ref, onMounted, watch, nextTick } from 'vue'
+import { useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from './store/auth.store'
 import { useProgresoStore } from './store/progreso.store'
 import BannerConexion from './componentes/BannerConexion.vue'
 
 const router = useRouter()
+const route = useRoute()
+
+// Menú desplegable para celular
+const menuAbierto = ref(false)
+watch(() => route.fullPath, () => { menuAbierto.value = false })
 const authStore = useAuthStore()
 const progresoStore = useProgresoStore()
 
@@ -175,5 +192,55 @@ function manejarCerrarSesion() {
    (si el menú se parte en dos líneas, el contenido baja con él) */
 main.con-nav-fijo {
   padding-top: calc(var(--alto-nav, 60px) + 15px);
+}
+
+/* El botón de menú solo existe en pantallas chicas */
+.btn-menu {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  border: 1px solid var(--color-borde);
+  border-radius: 50%;
+  background: transparent;
+  color: var(--color-texto-principal);
+  cursor: pointer;
+}
+
+/* Celular y tablet chica: el menú se esconde y se abre con el botón */
+@media (max-width: 900px) {
+  .navegacion-principal {
+    flex-wrap: wrap;
+    padding: 0.5rem 0.8rem;
+  }
+  .logo-app { order: 1; }
+  .info-usuario {
+    order: 2;
+    margin-left: auto;
+    gap: 0.5rem;
+    min-width: 0;
+  }
+  .nombre-usuario {
+    max-width: 110px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .btn-menu { order: 3; display: flex; }
+  .enlaces-nav {
+    order: 4;
+    display: none;
+    flex-direction: column;
+    flex-wrap: nowrap;
+    width: 100%;
+    gap: 0.2rem;
+    padding-top: 0.5rem;
+  }
+  .enlaces-nav.abierto { display: flex; }
+  .enlace-nav {
+    font-size: 0.9rem;
+    padding: 0.7rem 0.9rem;
+  }
 }
 </style>

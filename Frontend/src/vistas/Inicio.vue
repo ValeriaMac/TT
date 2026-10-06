@@ -469,4 +469,17 @@ const modulos = [
 .btn-donar:hover {
   background-color: var(--color-primario-hover);
 }
+
+/* Celular: el banner se apila para que nada se salga de la pantalla */
+@media (max-width: 640px) {
+  .pagina-inicio { padding: 0.8rem; }
+  .banner-bienvenida {
+    flex-wrap: wrap;
+    gap: 0.8rem;
+    padding: 1.2rem;
+  }
+  .texto-bienvenida { flex: 1 1 140px; min-width: 0; }
+  .texto-bienvenida h1 { font-size: 1.3rem; overflow-wrap: anywhere; }
+  .puntos-bienvenida { flex: 1 1 100%; text-align: left; }
+}
 </style>

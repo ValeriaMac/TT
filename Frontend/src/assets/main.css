@@ -73,3 +73,8 @@ h1, h2, .logo {
 button {
   border-radius: var(--radio-boton);
 }
+
+/* Celular: menos margen alrededor de toda la app para aprovechar la pantalla */
+@media (max-width: 640px) {
+  #app { padding: 0.5rem; }
+}
