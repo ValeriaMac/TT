@@ -1,35 +1,41 @@
 <template>
   <div style="padding: 20px;">
 
-    <!-- Barra fija de controles -->
-    <div style="position: fixed; top: 0; left: 0; right: 0; background-color: #1e1e1e; padding: 10px 20px; z-index: 100; display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
-      <button @click="emit('regresar')">← Regresar</button>
-      <h2 style="margin: 0; font-size: 16px; flex: 1;">{{ titulo }}</h2>
-      <button @click="reproducir" :disabled="leyendo">▶ Reproducir</button>
-      <button @click="pausar" :disabled="!leyendo">⏸ Pausar</button>
-      <button @click="reiniciar">↺ Reiniciar</button>
-      <label style="color: white;">Velocidad:</label>
-      <input
-        type="range"
-        min="0.5"
-        max="2"
-        step="0.1"
-        v-model="velocidad"
-        style="width: 80px;"
-      />
-      <span style="color: white;">{{ velocidad }}x</span>
-      <label style="color: white;">Voz:</label>
-      <select v-model="vozSeleccionada" style="max-width: 150px;">
+    <!-- Tarjeta de controles de lectura -->
+    <div class="barra-lector">
+      <button class="btn-redondo btn-play" :title="leyendo ? 'Pausar' : 'Reproducir'" @click="leyendo ? pausar() : reproducir()">
+        {{ leyendo ? '⏸' : '▶' }}
+      </button>
+      <button class="btn-redondo" title="Detener" @click="detener">■</button>
+      <button class="btn-redondo" title="Reiniciar" @click="reiniciar">↺</button>
+
+      <select v-model="vozSeleccionada" class="campo-barra" title="Voz">
         <option v-for="voz in vocesDisponibles" :key="voz.name" :value="voz.name">
           {{ voz.name }}
         </option>
       </select>
+
+      <div class="grupo-velocidad">
+        <label>Velocidad: {{ velocidad }}x</label>
+        <input type="range" min="0.5" max="2" step="0.1" v-model="velocidad" />
+      </div>
+
+      <h2 class="titulo-barra">{{ titulo }}</h2>
+
+      <select v-model="plantillaSeleccionada" @change="alCambiarPlantilla" class="campo-barra">
+        <option value="">Seleccionar plantilla</option>
+        <option v-for="plantilla in configuracionStore.plantillas" :key="plantilla.id" :value="plantilla.id">
+          {{ plantilla.nombre }}
+        </option>
+      </select>
+
+      <button class="btn-barra" @click="emit('regresar')">↑ Subir EPUB</button>
     </div>
 
-    <p v-if="cargando" style="margin-top: 60px;">Cargando libro...</p>
-    <p v-if="errorMsg" style="color: red; margin-top: 60px;">{{ errorMsg }}</p>
+    <p v-if="cargando">Cargando libro...</p>
+    <p v-if="errorMsg" style="color: red;">{{ errorMsg }}</p>
 
-    <div v-if="!cargando && progresoGuardado" style="margin-top: 60px; padding: 10px; background-color: #2a2a2a; border-radius: 8px; color: #aaa; font-size: 14px;">
+    <div v-if="!cargando && progresoGuardado" class="aviso-progreso">
       📖 Continuando desde donde te quedaste...
     </div>
 
@@ -38,7 +44,7 @@
       v-show="!cargando"
       ref="contenedorLibro"
       id="contenedor-libro"
-      :style="progresoGuardado ? 'margin-top: 10px;' : 'margin-top: 60px;'"
+      :style="progresoGuardado ? 'margin-top: 10px;' : 'margin-top: 0;'"
       style="max-width: 700px; margin-left: auto; margin-right: auto; line-height: 1.8;"
     ></div>
 
@@ -76,6 +82,7 @@ const cargando = ref(true)
 const errorMsg = ref(null)
 const pausado = ref(false)
 const velocidad = ref(0.9)
+const plantillaSeleccionada = ref('')
 const indicePausa = ref(0)
 const contenedorLibro = ref(null)
 const vozSeleccionada = ref('')
@@ -136,7 +143,7 @@ const agregarEstilos = () => {
       color: ${est.color} !important; font-family: ${est.fontFamily} !important; margin-top: 24px; margin-bottom: 12px;
     }
     #contenedor-libro p {
-      color: ${est.color} !important; margin-bottom: 14px; text-align: justify;
+      color: ${est.color} !important; margin-bottom: 14px; text-align: left;
     }
     #contenedor-libro span { color: ${est.color} !important; }
     #contenedor-libro img {
@@ -301,6 +308,9 @@ const cargarLibro = async () => {
 }
 
 onMounted(async () => {
+  if (configuracionStore.plantillas.length === 0) {
+    try { await configuracionStore.cargarPlantillas() } catch (e) { /* sin plantillas */ }
+  }
   if (!configuracionStore.config) {
     await configuracionStore.cargarConfiguracion()
   }
@@ -428,6 +438,12 @@ const detener = () => {
   if (resaltada) resaltada.classList.remove('palabra-resaltada')
 }
 
+// Aplica la plantilla elegida (cambia la personalización de lectura)
+const alCambiarPlantilla = async () => {
+  if (!plantillaSeleccionada.value) return
+  await configuracionStore.aplicarPlantilla(plantillaSeleccionada.value)
+}
+
 const reiniciar = () => {
   window.speechSynthesis.cancel()
   leyendo.value = false
@@ -449,3 +465,68 @@ onUnmounted(() => {
   if (libro) libro.destroy()
 })
 </script>
+
+<style scoped>
+.aviso-progreso {
+  padding: 4px 4px;
+  margin-bottom: 4px;
+  max-width: 700px;
+  margin-left: auto;
+  margin-right: auto;
+  background: transparent;
+  color: var(--color-texto-secundario, #7a7a6a);
+  font-size: 0.75rem;
+}
+.barra-lector {
+  position: sticky;
+  top: calc(var(--alto-nav, 62px) + 8px);
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px 16px;
+  margin-bottom: 16px;
+  padding: 12px 18px;
+  background: var(--color-tarjeta, #fff);
+  color: var(--color-texto-principal, #3a3a2c);
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  border-radius: var(--radio-tarjeta, 16px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+}
+.btn-redondo {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: 1px solid rgba(0, 0, 0, 0.15);
+  background: var(--color-tarjeta, #fff);
+  color: var(--color-texto-secundario, #7a7a6a);
+  font-size: 15px;
+  cursor: pointer;
+}
+.btn-redondo.btn-play {
+  background: var(--color-primario, #5c7a3f);
+  border-color: var(--color-primario, #5c7a3f);
+  color: #fff;
+}
+.btn-redondo.btn-play:hover { background: var(--color-primario-hover, #4a6532); }
+.campo-barra {
+  max-width: 220px;
+  padding: 6px 8px;
+  border: none;
+  background: transparent;
+  color: var(--color-texto-principal, #3a3a2c);
+  font-size: 0.8rem;
+}
+.grupo-velocidad { display: flex; align-items: center; gap: 8px; font-size: 0.8rem; }
+.grupo-velocidad input { width: 90px; accent-color: var(--color-primario, #5c7a3f); }
+.titulo-barra { flex: 1; margin: 0; min-width: 120px; font-size: 0.85rem; font-weight: 400; }
+.btn-barra {
+  padding: 8px 14px;
+  border-radius: 999px;
+  border: 1px solid rgba(0, 0, 0, 0.15);
+  background: var(--color-tarjeta, #fff);
+  color: var(--color-texto-principal, #3a3a2c);
+  font-size: 0.8rem;
+  cursor: pointer;
+}
+</style>

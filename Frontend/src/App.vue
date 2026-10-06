@@ -57,7 +57,7 @@
 </template>
 
 <script setup>
-import { onMounted, watch } from 'vue'
+import { onMounted, watch, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from './store/auth.store'
 import { useProgresoStore } from './store/progreso.store'
@@ -70,6 +70,27 @@ const progresoStore = useProgresoStore()
 // RF_26: al abrir la app (y cada vez que se recupera el internet) se
 // mandan al servidor los resultados que se guardaron sin conexión
 onMounted(() => progresoStore.iniciarSincronizacion())
+
+// Publica la altura real del menú fijo como variable CSS (--alto-nav) para
+// que el contenido y la barra de lectura se coloquen justo debajo de él.
+let observadorNav = null
+function medirMenu() {
+  const nav = document.querySelector('.navegacion-principal')
+  if (!nav) return
+  const publicar = () =>
+    document.documentElement.style.setProperty('--alto-nav', `${nav.offsetHeight}px`)
+  publicar()
+  if (observadorNav) observadorNav.disconnect()
+  if (typeof ResizeObserver !== 'undefined') {
+    observadorNav = new ResizeObserver(publicar)
+    observadorNav.observe(nav)
+  }
+}
+onMounted(() => nextTick(medirMenu))
+watch(
+  () => authStore.estaAutenticado,
+  () => nextTick(medirMenu)
+)
 watch(
   () => authStore.estaAutenticado,
   (iniciada) => {
@@ -93,7 +114,8 @@ function manejarCerrarSesion() {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 0.9rem 2rem;
+  gap: 0.8rem;
+  padding: 0.7rem 1.2rem;
   background-color: var(--color-tarjeta);
   border-bottom: 1px solid var(--color-borde);
 }
@@ -104,7 +126,7 @@ function manejarCerrarSesion() {
 
 .enlaces-nav {
   display: flex;
-  gap: 0.4rem;
+  gap: 0.1rem;
   flex-wrap: wrap;
 }
 
@@ -114,9 +136,9 @@ function manejarCerrarSesion() {
   gap: 0.4rem;
   text-decoration: none;
   color: var(--color-texto-secundario);
-  font-size: 0.9rem;
+  font-size: 0.78rem;
   font-weight: 500;
-  padding: 0.5rem 0.9rem;
+  padding: 0.45rem 0.6rem;
   border-radius: var(--radio-boton);
   white-space: nowrap;
 }
@@ -138,7 +160,7 @@ function manejarCerrarSesion() {
 }
 
 .nombre-usuario {
-  font-size: 0.9rem;
+  font-size: 0.8rem;
   font-weight: 600;
   white-space: nowrap;
   color: inherit;
@@ -149,7 +171,9 @@ function manejarCerrarSesion() {
   color: var(--color-primario);
 }
 
+/* --alto-nav lo calcula el script de arriba según la altura real del menú
+   (si el menú se parte en dos líneas, el contenido baja con él) */
 main.con-nav-fijo {
-  padding-top: 75px;
+  padding-top: calc(var(--alto-nav, 60px) + 15px);
 }
 </style>
