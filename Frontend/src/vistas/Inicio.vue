@@ -209,7 +209,6 @@ const modulos = [
     titulo: 'Ejercicios',
     descripcion: 'Practica',
     link: '/ejercicios',
-    deshabilitado: true, // esta ruta todavía no existe
     colorFondo: '#dcfce7',
     colorTexto: '#16a34a',
     icono: '<svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="2" y="6" width="20" height="12" rx="2"/><path d="M6 12h4M8 10v4M15 11h.01M18 13h.01"/></svg>',

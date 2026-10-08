@@ -22,22 +22,12 @@
       <IlustracionLluvia />
       <p class="indicador-nivel">Nivel {{ numeroNivel }} · Subnivel {{ subnivelActual }} de 5</p>
       <p class="instruccion-grande">
-        Atrapa las letras que se van marcando arriba — la letra a atrapar
-        va <strong>cambiando</strong> cada rato, ¡mantente alerta! Tienes 4 vidas;
-        pierdes una si se te escapa la letra correcta o atrapas una equivocada.
+        Atrapa la letra marcada arriba.<br />
+        La letra cambia. Tienes 4 vidas.
       </p>
-      <p class="instruccion-teclado">
-        Puedes darle clic a la letra, o escribirla en tu teclado.
-      </p>
-      <p class="instruccion-teclado">
-        Al principio solo caen pocas letras distintas, pero conforme pasa el
-        tiempo van apareciendo letras nuevas y todo cae más rápido.
-      </p>
-      <p class="instruccion-meta">Necesitas {{ umbralParaAvanzar }} aciertos antes de perder tus vidas para subir de subnivel.</p>
-      <p class="instruccion-meta">
-        Si fallas 3 veces seguidas, las letras caen más lento hasta que aciertes una. La ronda dura
-        máximo 5 minutos. Tienes 3 intentos por subnivel; al agotarlos puedes ver la solución.
-      </p>
+      <p class="instruccion-meta">Haz clic o escribe la letra.</p>
+      <p class="instruccion-meta">Necesitas {{ umbralParaAvanzar }} aciertos para subir.</p>
+      <p class="instruccion-meta">Tienes 3 intentos.</p>
       <button class="btn-primario" @click="comenzarJuego">▶ Comenzar</button>
     </div>
 

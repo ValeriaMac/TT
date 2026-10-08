@@ -22,18 +22,12 @@
       <IlustracionTarjetas />
       <p class="indicador-nivel">Nivel {{ numeroNivel }} · Subnivel {{ subnivelActual }} de 5</p>
       <p class="instruccion-grande">
-        Verás una tarjeta con una palabra incompleta o una letra a elegir. Decide rápidamente cuál es la opción correcta entre las 
-        dos alternativas (por ejemplo, B o V). Tienes {{ TIEMPO_POR_TARJETA }} segundos por tarjeta — si se acaba el tiempo 
-        sin responder, cuenta como error.
+        Elige la opción correcta.<br />
+        Tienes {{ TIEMPO_POR_TARJETA }} segundos por tarjeta.
       </p>
-      <p class="instruccion-meta">
-        Puedes usar el botón de cada letra, o las flechas ← → de tu teclado.
-      </p>
-      <p class="instruccion-meta">Necesitas acertar todas para subir de subnivel.</p>
-      <p class="instruccion-meta">
-        Si fallas 3 tarjetas seguidas, te damos más tiempo ({{ TIEMPO_CON_AYUDA }} segundos) hasta que aciertes una.
-        Tienes 3 intentos por subnivel; al agotarlos puedes ver la solución.
-      </p>
+      <p class="instruccion-meta">Usa los botones o las flechas ← →.</p>
+      <p class="instruccion-meta">Acierta todas para subir.</p>
+      <p class="instruccion-meta">Tienes 3 intentos.</p>
       <button class="btn-primario" @click="comenzarRonda">▶ Comenzar</button>
     </div>
 

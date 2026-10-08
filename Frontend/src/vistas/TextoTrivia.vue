@@ -22,15 +22,12 @@
       <IlustracionTrivia />
       <p class="indicador-nivel">Nivel {{ numeroNivel }} · Subnivel {{ subnivelActual }} de 5</p>
       <p class="instruccion-grande">
-        Primero vas a leer un texto con calma. Cuando estés listo, le das a
-        "Empezar trivia" y el texto se va a <strong>ocultar</strong> — las
-        preguntas se responden de memoria, no viendo el texto al mismo tiempo.
+        1. Lee el texto.<br />
+        2. El texto se oculta.<br />
+        3. Responde de memoria.
       </p>
-      <p class="instruccion-meta">Necesitas acertar TODAS las preguntas para subir de subnivel.</p>
-      <p class="instruccion-meta">
-        Si fallas 3 preguntas seguidas, el texto vuelve a mostrarse como pista. Tienes 3 intentos
-        por subnivel; al agotarlos puedes ver la solución.
-      </p>
+      <p class="instruccion-meta">Acierta todas para subir.</p>
+      <p class="instruccion-meta">Tienes 3 intentos.</p>
       <button class="btn-primario" @click="instruccionesVistas = true">▶ Comenzar</button>
     </div>
 
