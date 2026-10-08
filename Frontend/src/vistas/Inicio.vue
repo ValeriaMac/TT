@@ -23,17 +23,48 @@
       </div>
     </div>
 
-    <!-- Racha / progreso -->
+    <!-- Racha y puntos: cuánto falta para la siguiente recompensa -->
     <div class="tarjeta-racha">
-      <div class="fila-racha">
-        <span class="emoji-racha">🔥</span>
-        <div>
-          <div class="numero-racha">{{ rachaActual }}</div>
-          <div class="etiqueta-racha">días</div>
+      <div class="meta-recompensa">
+        <div class="fila-racha">
+          <span class="emoji-racha">🔥</span>
+          <div>
+            <div class="numero-racha">{{ rachaActual }}</div>
+            <div class="etiqueta-racha">días de racha</div>
+          </div>
         </div>
+        <div class="barra-progreso">
+          <div class="barra-progreso-relleno" :style="{ width: porcentajeRacha + '%' }"></div>
+        </div>
+        <p class="texto-meta" v-if="metaRacha?.siguiente">
+          <strong>{{ rachaActual }} / {{ metaRacha.siguiente.umbral }} días</strong>
+          para tu siguiente mascota:
+          {{ metaRacha.siguiente.emoji_marcador || '🐾' }} {{ metaRacha.siguiente.nombre }}
+        </p>
+        <p class="texto-meta" v-else-if="metaRacha">
+          ¡Ya tienes todas las mascotas por racha! 🎉
+        </p>
       </div>
-      <div class="barra-progreso">
-        <div class="barra-progreso-relleno" :style="{ width: porcentajeNivel + '%' }"></div>
+
+      <div class="meta-recompensa">
+        <div class="fila-racha">
+          <span class="emoji-racha">⭐</span>
+          <div>
+            <div class="numero-racha">{{ puntosTotales }}</div>
+            <div class="etiqueta-racha">puntos</div>
+          </div>
+        </div>
+        <div class="barra-progreso">
+          <div class="barra-progreso-relleno" :style="{ width: porcentajePuntos + '%' }"></div>
+        </div>
+        <p class="texto-meta" v-if="metaPuntos?.siguiente">
+          <strong>{{ puntosTotales }} / {{ metaPuntos.siguiente.umbral }} puntos</strong>
+          para tu siguiente accesorio:
+          {{ metaPuntos.siguiente.emoji_marcador || '🎁' }} {{ metaPuntos.siguiente.nombre }}
+        </p>
+        <p class="texto-meta" v-else-if="metaPuntos">
+          ¡Ya tienes todos los accesorios por puntos! 🎉
+        </p>
       </div>
     </div>
 
@@ -109,11 +140,27 @@ async function cargarMascotaActiva() {
   }
 }
 
+// Cuánto falta para la siguiente mascota (por racha) y el siguiente
+// accesorio (por puntos). Viene de GET /api/mascotas/siguientes.
+const metaRacha = ref(null);
+const metaPuntos = ref(null);
+
+async function cargarMetas() {
+  try {
+    const respuesta = await api.get('/mascotas/siguientes');
+    metaRacha.value = respuesta.data.racha;
+    metaPuntos.value = respuesta.data.puntos;
+  } catch (error) {
+    console.error('No se pudieron cargar las metas de recompensa:', error);
+  }
+}
+
 onMounted(() => {
   if (!progresoStore.cargado) {
     progresoStore.cargarProgreso();
   }
   cargarMascotaActiva();
+  cargarMetas();
 });
 
 // Ya no son valores fijos: vienen del backend real (tabla progreso_general)
@@ -123,9 +170,19 @@ const rachaActual = computed(() => progresoStore.rachaActual);
 // Las insignias siguen pendientes (todavía no hay endpoint para esas)
 const insigniasRecientes = ref([]); // ej: [{ id: 1, emoji: '✨' }]
 
-// Igual que en Dashboard.tsx: el progreso del nivel actual es el
-// resto de dividir los puntos entre 100
-const porcentajeNivel = computed(() => (puntosTotales.value % 100) / 100 * 100);
+// Porcentaje de la barra: avance entre el umbral anterior y el siguiente.
+// Si ya no hay siguiente recompensa, la barra se muestra llena.
+function porcentajeMeta(meta, valorActual) {
+  if (!meta) return 0;
+  if (!meta.siguiente) return 100;
+  const tramo = meta.siguiente.umbral - meta.previo;
+  if (tramo <= 0) return 100;
+  const avance = ((valorActual - meta.previo) / tramo) * 100;
+  return Math.min(100, Math.max(0, avance));
+}
+
+const porcentajeRacha = computed(() => porcentajeMeta(metaRacha.value, rachaActual.value));
+const porcentajePuntos = computed(() => porcentajeMeta(metaPuntos.value, puntosTotales.value));
 
 const mostrarModalDonacion = ref(false);
 
@@ -152,7 +209,6 @@ const modulos = [
     titulo: 'Ejercicios',
     descripcion: 'Practica',
     link: '/ejercicios',
-    deshabilitado: true, // esta ruta todavía no existe
     colorFondo: '#dcfce7',
     colorTexto: '#16a34a',
     icono: '<svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="2" y="6" width="20" height="12" rx="2"/><path d="M6 12h4M8 10v4M15 11h.01M18 13h.01"/></svg>',
@@ -237,6 +293,18 @@ const modulos = [
   padding: 1.5rem;
   margin-bottom: 2rem;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+}
+
+.meta-recompensa + .meta-recompensa {
+  margin-top: 1.5rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid #eee;
+}
+
+.texto-meta {
+  margin-top: 0.6rem;
+  font-size: 0.9rem;
+  color: var(--color-texto-secundario);
 }
 
 .fila-racha {
@@ -399,5 +467,18 @@ const modulos = [
 
 .btn-donar:hover {
   background-color: var(--color-primario-hover);
+}
+
+/* Celular: el banner se apila para que nada se salga de la pantalla */
+@media (max-width: 640px) {
+  .pagina-inicio { padding: 0.8rem; }
+  .banner-bienvenida {
+    flex-wrap: wrap;
+    gap: 0.8rem;
+    padding: 1.2rem;
+  }
+  .texto-bienvenida { flex: 1 1 140px; min-width: 0; }
+  .texto-bienvenida h1 { font-size: 1.3rem; overflow-wrap: anywhere; }
+  .puntos-bienvenida { flex: 1 1 100%; text-align: left; }
 }
 </style>

@@ -1,5 +1,31 @@
 @import './base.css';
 
+/* OpenDyslexic (licencia OFL, ver public/fonts/LICENSE-OpenDyslexic.txt).
+   Los archivos viven en public/fonts, así que no depende de que la persona
+   tenga la fuente instalada ni de instalar paquetes extra. */
+@font-face {
+  font-family: 'OpenDyslexic';
+  src: url('/fonts/OpenDyslexic-Regular.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'OpenDyslexic';
+  src: url('/fonts/OpenDyslexic-Bold.woff2') format('woff2');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* Botones, campos de texto y listas no heredan la fuente por defecto */
+button,
+input,
+select,
+textarea {
+  font-family: inherit;
+}
+
 #app {
   max-width: 1280px;
   margin: 0 auto;
@@ -30,7 +56,8 @@ a,
   --color-texto-secundario: #7a7a6a;
   --radio-tarjeta: 16px;
   --radio-boton: 999px;
-  --fuente-encabezados: 'Baloo 2', 'Comic Neue', cursive;
+  --fuente-sistema: 'OpenDyslexic', 'Comic Neue', Verdana, sans-serif;
+  --fuente-encabezados: var(--fuente-sistema);
 }
 
 body {
@@ -45,4 +72,9 @@ h1, h2, .logo {
 
 button {
   border-radius: var(--radio-boton);
+}
+
+/* Celular: menos margen alrededor de toda la app para aprovechar la pantalla */
+@media (max-width: 640px) {
+  #app { padding: 0.5rem; }
 }

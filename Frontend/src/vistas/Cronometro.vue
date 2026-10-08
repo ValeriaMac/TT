@@ -22,20 +22,20 @@
       <IlustracionCronometro />
       <p class="indicador-nivel">Nivel {{ numeroNivel }} · Subnivel {{ subnivelActual }} de 5</p>
       <p class="instruccion-grande">
-        Vas a leer el MISMO texto 3 veces en voz alta. La idea es ver si cada
-        vez te sale más fluido. Si te distraes o le das a "Empezar" antes de
-        tiempo, puedes cancelar esa lectura y repetirla.
+        Lee el mismo texto 3 veces en voz alta.<br />
+        Intenta leer más fluido cada vez.
       </p>
+      <p class="instruccion-meta">Tienes 3 intentos.</p>
 
       <div class="opcion-cronometro">
         <label class="etiqueta-opcion">
           <input type="checkbox" v-model="mostrarCronometro" />
-          Mostrar el cronómetro en números mientras leo
+          Mostrar el cronómetro en números
         </label>
         <p class="texto-ayuda-opcion">
           {{ mostrarCronometro
-            ? 'Vas a ver los segundos corriendo mientras lees.'
-            : 'En vez del número, vas a ver un relojito animado, sin presionarte con el tiempo exacto.' }}
+            ? 'Verás los segundos.'
+            : 'Verás un reloj animado, sin números.' }}
         </p>
       </div>
 
@@ -112,6 +112,16 @@
 
       <div class="dato-puntos">+{{ puntosObtenidos }} puntos</div>
 
+      <PanelIntentos
+        :intentos-usados="intentos.intentosUsados.value"
+        :maximo="intentos.MAX_INTENTOS"
+        :agotados="intentos.agotados.value"
+        :superada="rondaFueExitosa"
+        :solucion="solucionRonda"
+        nota="En Cronómetro no hay respuestas correctas o incorrectas: la ayuda es saber qué velocidad se espera para este texto."
+        @cerrar="cerrarSolucion"
+      />
+
       <div class="botones-final">
         <button class="btn-secundario" @click="reiniciarRonda">Intentar de nuevo</button>
         <router-link to="/ejercicios" class="btn-primario btn-enlace">Volver a ejercicios</router-link>
@@ -125,8 +135,11 @@ import { ref, computed, onMounted, onUnmounted } from 'vue';
 import api from '@/servicios/api';
 import { useProgresoStore } from '@/store/progreso.store';
 import IlustracionCronometro from '@/componentes/ilustraciones/IlustracionCronometro.vue'
+import PanelIntentos from '@/componentes/PanelIntentos.vue'
+import { useIntentosEjercicio } from '../composables/useIntentosEjercicio'
 
 const progresoStore = useProgresoStore();
+const intentos = useIntentosEjercicio('CU-EJ-02'); // RN_07: máximo 3 intentos por subnivel
 
 const cargando = ref(true);
 const errorCarga = ref('');
@@ -150,6 +163,8 @@ const tiempoTranscurrido = ref(0);
 const numeroLectura = ref(1);
 const lecturasPrevias = ref([]);
 const puntosObtenidos = ref(0);
+const rangoEsperado = ref([80, 100]); // palabras por minuto esperadas para el texto (viene del servidor)
+const solucionRonda = ref([]);
 
 let horaInicio = null;
 let intervaloReloj = null;
@@ -170,6 +185,8 @@ async function cargarLectura(excluirId = null) {
     numeroNivel.value = respuesta.data.numeroNivel;
     subnivelActual.value = respuesta.data.subnivel;
     ejercicioCompletado.value = respuesta.data.ejercicioCompletado;
+    rangoEsperado.value = respuesta.data.rangoEsperado || [80, 100];
+    intentos.cargar(numeroNivel.value, subnivelActual.value);
   } catch (error) {
     console.error('No se pudo cargar la lectura:', error);
     errorCarga.value = error.response?.data?.mensaje || 'No se pudo conectar con el servidor.';
@@ -258,6 +275,17 @@ async function finalizarRonda() {
   puntosObtenidos.value = rondaFueExitosa.value ? 100 : 60;
   terminado.value = true;
 
+  // RN_07 / RF_25: se cuenta el intento y se prepara la "solución"
+  intentos.registrarRonda(rondaFueExitosa.value);
+  const promedio = Math.round(lecturasPrevias.value.reduce((suma, ppm) => suma + ppm, 0) / 3);
+  solucionRonda.value = [
+    {
+      titulo: 'Velocidad esperada para este texto',
+      correcta: `${rangoEsperado.value[0]} a ${rangoEsperado.value[1]} palabras por minuto`,
+      tuRespuesta: `Tu promedio: ${promedio} palabras por minuto`,
+    },
+  ];
+
   await progresoStore.registrarResultado({
     ejercicioClave: 'CU-EJ-02',
     nivelNumero: numeroNivel.value,
@@ -274,6 +302,12 @@ function reiniciarRonda() {
   tiempoTranscurrido.value = 0;
   puntosObtenidos.value = 0;
   cargarLectura(ultimaLecturaId.value);
+}
+
+// Después de ver la solución, los intentos se reinician (RF_25)
+function cerrarSolucion() {
+  intentos.reiniciar();
+  reiniciarRonda();
 }
 
 onMounted(() => cargarLectura());
@@ -558,5 +592,11 @@ onUnmounted(() => clearInterval(intervaloReloj));
   display: flex;
   align-items: center;
   justify-content: center;
+}
+
+.instruccion-meta {
+  font-size: 0.85rem;
+  color: var(--color-texto-secundario);
+  margin-bottom: 0.6rem;
 }
 </style>

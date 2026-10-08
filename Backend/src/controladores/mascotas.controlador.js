@@ -167,6 +167,75 @@ async function otorgarPorUmbral(tabla, tablaUsuario, columnaId, usuarioId, { cat
     return otorgadas;
 }
 
+// Busca, dentro de una categoría con umbral numérico (racha o puntos), cuál
+// es la siguiente recompensa que la persona todavía NO tiene, y cuál fue el
+// umbral anterior (para dibujar la barra de progreso entre los dos).
+async function buscarSiguienteUmbral(tabla, tablaUsuario, columnaId, usuarioId, { categoria, columnaCondicion, valorActual }) {
+    const { data: todas } = await supabase
+        .from(tabla)
+        .select('*')
+        .eq('categoria', categoria)
+        .not(columnaCondicion, 'is', null)
+        .order(columnaCondicion, { ascending: true });
+
+    const { data: obtenidas } = await supabase
+        .from(tablaUsuario)
+        .select(columnaId)
+        .eq('usuario_id', usuarioId);
+
+    const idsObtenidos = new Set((obtenidas || []).map((o) => o[columnaId]));
+    const lista = todas || [];
+
+    const siguiente = lista.find((item) => item[columnaCondicion] > valorActual && !idsObtenidos.has(item.id));
+    const umbralesAlcanzados = lista.filter((item) => item[columnaCondicion] <= valorActual).map((item) => item[columnaCondicion]);
+    const previo = umbralesAlcanzados.length > 0 ? Math.max(...umbralesAlcanzados) : 0;
+
+    return {
+        actual: valorActual,
+        previo,
+        siguiente: siguiente
+            ? {
+                  tipo: tabla === 'mascotas' ? 'mascota' : 'accesorio',
+                  id: siguiente.id,
+                  nombre: siguiente.nombre,
+                  emoji_marcador: siguiente.emoji_marcador || null,
+                  imagen_url: siguiente.imagen_url || null,
+                  umbral: siguiente[columnaCondicion],
+              }
+            : null,
+    };
+}
+
+// GET /api/mascotas/siguientes (protegida)
+// Para la pantalla de inicio: cuántos días de racha y cuántos puntos faltan
+// para la siguiente mascota (constancia) y el siguiente accesorio (puntos).
+async function obtenerSiguientesRecompensas(req, res) {
+    try {
+        const { data: progreso } = await supabase
+            .from('progreso_general')
+            .select('racha_actual, puntos_totales')
+            .eq('usuario_id', req.usuarioId)
+            .single();
+
+        const racha = await buscarSiguienteUmbral('mascotas', 'usuario_mascotas', 'mascota_id', req.usuarioId, {
+            categoria: 'constancia',
+            columnaCondicion: 'condicion_racha_dias',
+            valorActual: progreso?.racha_actual || 0,
+        });
+
+        const puntos = await buscarSiguienteUmbral('accesorios', 'usuario_accesorios', 'accesorio_id', req.usuarioId, {
+            categoria: 'puntos',
+            columnaCondicion: 'condicion_puntos_totales',
+            valorActual: progreso?.puntos_totales || 0,
+        });
+
+        res.json({ racha, puntos });
+    } catch (error) {
+        console.error('Error al obtener siguientes recompensas:', error);
+        res.status(500).json({ mensaje: 'Error interno del servidor' });
+    }
+}
+
 // POST /api/mascotas/registrar-lectura (protegida)
 // Body: { nombreArchivo }
 // Se llama desde VistaLector.vue cada vez que se abre un EPUB real
@@ -361,6 +430,7 @@ module.exports = {
     revisarRecompensas,
     registrarLibroAbierto,
     obtenerColeccion,
+    obtenerSiguientesRecompensas,
     otorgarMascotaBienvenida,
     obtenerMascotaActiva,
     elegirMascotaActiva,
