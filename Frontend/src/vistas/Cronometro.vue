@@ -22,23 +22,20 @@
       <IlustracionCronometro />
       <p class="indicador-nivel">Nivel {{ numeroNivel }} · Subnivel {{ subnivelActual }} de 5</p>
       <p class="instruccion-grande">
-        Vas a leer el MISMO texto 3 veces en voz alta. La idea es ver si cada
-        vez te sale más fluido. Si te distraes o le das a "Empezar" antes de
-        tiempo, puedes cancelar esa lectura y repetirla.
+        Lee el mismo texto 3 veces en voz alta.<br />
+        Intenta leer más fluido cada vez.
       </p>
-      <p class="instruccion-meta">
-        Tienes 3 intentos por subnivel; al agotarlos puedes ver la velocidad esperada para este texto.
-      </p>
+      <p class="instruccion-meta">Tienes 3 intentos.</p>
 
       <div class="opcion-cronometro">
         <label class="etiqueta-opcion">
           <input type="checkbox" v-model="mostrarCronometro" />
-          Mostrar el cronómetro en números mientras leo
+          Mostrar el cronómetro en números
         </label>
         <p class="texto-ayuda-opcion">
           {{ mostrarCronometro
-            ? 'Vas a ver los segundos corriendo mientras lees.'
-            : 'En vez del número, vas a ver un relojito animado, sin presionarte con el tiempo exacto.' }}
+            ? 'Verás los segundos.'
+            : 'Verás un reloj animado, sin números.' }}
         </p>
       </div>
 

@@ -26,18 +26,11 @@
       <IlustracionAtrapaElError />
       <p class="indicador-nivel">Nivel {{ numeroNivel }} · Subnivel {{ subnivelActual }} de 5</p>
       <p class="instruccion-grande">
-        Vas a leer una oración con una palabra incorrecta escondida.
-        Encuéntrala y escríbela como debería ser. Son {{ preguntas.length }} oraciones
-        en esta ronda.
+        Cada oración tiene una palabra mal escrita.<br />
+        Escríbela bien.
       </p>
-      <p class="instruccion-meta">
-        Si fallas 3 veces seguidas en la misma pregunta, la palabra con el
-        error se va a resaltar para ayudarte en la siguiente.
-      </p>
-      <p class="instruccion-meta">Necesitas las {{ preguntas.length }} correctas para subir de subnivel.</p>
-      <p class="instruccion-meta">
-        Tienes 3 intentos por subnivel; al agotarlos puedes ver la solución.
-      </p>
+      <p class="instruccion-meta">Son {{ preguntas.length }} oraciones. Acierta todas para subir.</p>
+      <p class="instruccion-meta">Tienes 3 intentos.</p>
       <button class="btn-primario" @click="instruccionesVistas = true">▶ Comenzar</button>
     </div>
 

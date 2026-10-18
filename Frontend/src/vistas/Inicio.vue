@@ -4,16 +4,12 @@
     <!-- Bienvenida -->
     <div class="banner-bienvenida">
       <div class="emoji-bienvenida">
-        <img v-if="mascotaActiva?.imagen_url" :src="mascotaActiva.imagen_url" :alt="mascotaActiva.nombre" />
-        <span v-else>{{ mascotaActiva?.emoji_marcador || '🦉' }}</span>
-        <span
-          v-for="accesorio in accesoriosEquipados"
-          :key="accesorio.id"
-          class="accesorio-encimado"
-        >
-          {{ accesorio.emoji_marcador }}
-        </span>
-      </div>
+      <MascotaConAccesorios
+        :mascota="mascotaActiva"
+        :accesorios="accesoriosEquipados"
+        :tamano="96"
+      />
+    </div>
       <div class="texto-bienvenida">
         <h1>¡Hola, {{ authStore.usuario?.nombre }}! 👋</h1>
       </div>
@@ -120,6 +116,7 @@ import { useAuthStore } from '@/store/auth.store';
 import { useProgresoStore } from '@/store/progreso.store';
 import ModalDonacion from '@/componentes/ModalDonacion.vue';
 import api from '@/servicios/api';
+import MascotaConAccesorios from '@/componentes/MascotaConAccesorios.vue';
 
 const authStore = useAuthStore();
 const progresoStore = useProgresoStore();
@@ -206,14 +203,13 @@ const modulos = [
     icono: '<svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>',
   },
   {
-    titulo: 'Ejercicios',
-    descripcion: 'Practica',
-    link: '/ejercicios',
-    deshabilitado: true, // esta ruta todavía no existe
-    colorFondo: '#dcfce7',
-    colorTexto: '#16a34a',
-    icono: '<svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="2" y="6" width="20" height="12" rx="2"/><path d="M6 12h4M8 10v4M15 11h.01M18 13h.01"/></svg>',
-  },
+  titulo: 'Ejercicios',
+  descripcion: 'Practica',
+  link: '/ejercicios',
+  colorFondo: '#dcfce7',
+  colorTexto: '#16a34a',
+  icono: '<svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="2" y="6" width="20" height="12" rx="2"/><path d="M6 12h4M8 10v4M15 11h.01M18 13h.01"/></svg>',
+},
   {
     titulo: 'Documentos',
     descripcion: 'Gestiona textos',
@@ -245,24 +241,6 @@ const modulos = [
 .emoji-bienvenida {
   position: relative;
   font-size: 3.5rem;
-}
-
-.emoji-bienvenida img {
-  width: 64px;
-  height: 64px;
-  object-fit: contain;
-}
-
-.accesorio-encimado {
-  position: absolute;
-  font-size: 1.4rem;
-  bottom: -4px;
-  right: -8px;
-}
-
-.accesorio-encimado:nth-child(3) {
-  right: auto;
-  left: -8px;
 }
 
 .texto-bienvenida {
