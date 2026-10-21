@@ -12,23 +12,26 @@ async function revisarRecompensas(usuarioId, contextoEjercicio = null) {
     const recompensasNuevas = [];
 
     if (contextoEjercicio) {
-        const { ejercicioClave, esPrimerResultado, fuePerfecta, ejercicioCompletado } = contextoEjercicio;
+        const { ejercicioClave, nivelesCompletados, ejercicioCompletado } = contextoEjercicio;
 
-        if (esPrimerResultado) {
-            const otorgada = await otorgarPorCondicion('mascotas', 'usuario_mascotas', 'mascota_id', usuarioId, {
-                categoria: 'primeros_pasos',
-                condicion_ejercicio: ejercicioClave,
-            });
-            if (otorgada) recompensasNuevas.push(otorgada);
-        }
+        // Primeros pasos (mascotas): se ganan al COMPLETAR cierto nivel del
+        // ejercicio (columna condicion_nivel), ya no con la primera ronda
+        const otorgadasPrimerosPasos = await otorgarPorUmbral('mascotas', 'usuario_mascotas', 'mascota_id', usuarioId, {
+            categoria: 'primeros_pasos',
+            columnaCondicion: 'condicion_nivel',
+            valorActual: nivelesCompletados,
+            filtrosExtra: { condicion_ejercicio: ejercicioClave },
+        });
+        recompensasNuevas.push(...otorgadasPrimerosPasos);
 
-        if (fuePerfecta) {
-            const otorgada = await otorgarPorCondicion('accesorios', 'usuario_accesorios', 'accesorio_id', usuarioId, {
-                categoria: 'perfeccion',
-                condicion_ejercicio: ejercicioClave,
-            });
-            if (otorgada) recompensasNuevas.push(otorgada);
-        }
+        // Perfección (accesorios): igual, pero con un nivel más alto
+        const otorgadasPerfeccion = await otorgarPorUmbral('accesorios', 'usuario_accesorios', 'accesorio_id', usuarioId, {
+            categoria: 'perfeccion',
+            columnaCondicion: 'condicion_nivel',
+            valorActual: nivelesCompletados,
+            filtrosExtra: { condicion_ejercicio: ejercicioClave },
+        });
+        recompensasNuevas.push(...otorgadasPerfeccion);
 
         if (ejercicioCompletado) {
             const otorgada = await otorgarPorCondicion('accesorios', 'usuario_accesorios', 'accesorio_id', usuarioId, {
@@ -42,7 +45,7 @@ async function revisarRecompensas(usuarioId, contextoEjercicio = null) {
     // Constancia: racha actual contra los 3 umbrales (3/7/30 días)
     const { data: progreso } = await supabase
         .from('progreso_general')
-        .select('racha_actual, puntos_totales')
+        .select('racha_actual, racha_maxima, puntos_totales')
         .eq('usuario_id', usuarioId)
         .single();
 
@@ -50,7 +53,8 @@ async function revisarRecompensas(usuarioId, contextoEjercicio = null) {
         const otorgadas = await otorgarPorUmbral('mascotas', 'usuario_mascotas', 'mascota_id', usuarioId, {
             categoria: 'constancia',
             columnaCondicion: 'condicion_racha_dias',
-            valorActual: progreso.racha_actual,
+            // racha_maxima: si ya llegó a la meta una vez, no se pierde por faltar un día
+            valorActual: progreso.racha_maxima,
         });
         recompensasNuevas.push(...otorgadas);
 
@@ -96,14 +100,19 @@ async function revisarRecompensas(usuarioId, contextoEjercicio = null) {
     });
     recompensasNuevas.push(...otorgadasLecturaAccesorio);
 
-    // Variedad: ¿ya completó al menos 1 ronda en los 5 ejercicios gamificados?
-    const { data: ejerciciosConResultado } = await supabase
+    // Variedad: al menos 3 rondas perfectas en cada uno de los 5 ejercicios
+    const { data: rondasPerfectas } = await supabase
         .from('resultados_ejercicio')
         .select('ejercicio_id')
-        .eq('usuario_id', usuarioId);
+        .eq('usuario_id', usuarioId)
+        .eq('puntos_obtenidos', 100);
 
-    const ejerciciosDistintos = new Set((ejerciciosConResultado || []).map((r) => r.ejercicio_id));
-    if (ejerciciosDistintos.size >= 5) {
+    const perfectasPorEjercicio = {};
+    for (const fila of rondasPerfectas || []) {
+        perfectasPorEjercicio[fila.ejercicio_id] = (perfectasPorEjercicio[fila.ejercicio_id] || 0) + 1;
+    }
+    const ejerciciosConTres = Object.values(perfectasPorEjercicio).filter((n) => n >= 3).length;
+    if (ejerciciosConTres >= 5) {
         const otorgada = await otorgarPorCondicion('accesorios', 'usuario_accesorios', 'accesorio_id', usuarioId, {
             categoria: 'variedad',
             condicion_variedad_ejercicios: true,
@@ -141,14 +150,18 @@ async function otorgarPorCondicion(tabla, tablaUsuario, columnaId, usuarioId, fi
 // Otorga TODAS las recompensas de una categoría cuyo umbral numérico
 // ya se alcanzó (usado para condiciones progresivas: racha, puntos,
 // documentos escritos, libros leídos)
-async function otorgarPorUmbral(tabla, tablaUsuario, columnaId, usuarioId, { categoria, columnaCondicion, valorActual }) {
+async function otorgarPorUmbral(tabla, tablaUsuario, columnaId, usuarioId, { categoria, columnaCondicion, valorActual, filtrosExtra = {} }) {
     const otorgadas = [];
 
-    const { data: candidatos } = await supabase
+    let consulta = supabase
         .from(tabla)
         .select('*')
         .eq('categoria', categoria)
         .lte(columnaCondicion, valorActual);
+    for (const [columna, valor] of Object.entries(filtrosExtra)) {
+        consulta = consulta.eq(columna, valor);
+    }
+    const { data: candidatos } = await consulta;
 
     for (const item of candidatos || []) {
         const { data: yaLoTiene } = await supabase
@@ -213,14 +226,14 @@ async function obtenerSiguientesRecompensas(req, res) {
     try {
         const { data: progreso } = await supabase
             .from('progreso_general')
-            .select('racha_actual, puntos_totales')
+            .select('racha_maxima, puntos_totales')
             .eq('usuario_id', req.usuarioId)
             .single();
 
         const racha = await buscarSiguienteUmbral('mascotas', 'usuario_mascotas', 'mascota_id', req.usuarioId, {
             categoria: 'constancia',
             columnaCondicion: 'condicion_racha_dias',
-            valorActual: progreso?.racha_actual || 0,
+            valorActual: progreso?.racha_maxima || 0,
         });
 
         const puntos = await buscarSiguienteUmbral('accesorios', 'usuario_accesorios', 'accesorio_id', req.usuarioId, {

@@ -126,12 +126,13 @@ async function registrarResultado(req, res) {
 
         // 3) Se revisan las recompensas (mascotas/accesorios) que este
         // resultado podría haber desbloqueado
-        const { ejercicioCompletado } = await determinarNivelYSubnivel(req.usuarioId, ejercicio.id);
+        const { numeroNivel, ejercicioCompletado } = await determinarNivelYSubnivel(req.usuarioId, ejercicio.id);
+        // Niveles que ya terminó por completo (sus 5 subniveles)
+        const nivelesCompletados = ejercicioCompletado ? numeroNivel : numeroNivel - 1;
 
         const recompensasNuevas = await revisarRecompensas(req.usuarioId, {
             ejercicioClave,
-            esPrimerResultado,
-            fuePerfecta: puntosObtenidos === 100,
+            nivelesCompletados,
             ejercicioCompletado,
         });
 
