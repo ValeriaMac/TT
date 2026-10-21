@@ -42,21 +42,28 @@
       <div class="caja-oracion" v-html="oracionMostrada"></div>
 
       <form @submit.prevent="manejarRespuesta" class="formulario-respuesta">
-        <input
-          v-model="respuestaUsuario"
-          type="text"
-          placeholder="Escribe la palabra correcta"
-          :disabled="mostrandoResultado || verificando"
-          class="input-respuesta"
-          autofocus
-        />
+        <!-- Zona marcada: recuadro amarillo para que se vea dónde responder -->
+        <div class="zona-respuesta" :class="{ bloqueada: mostrandoResultado || verificando }">
+          <label for="respuesta" class="etiqueta-respuesta">👇 Escribe aquí tu respuesta</label>
+          <input
+            id="respuesta"
+            v-model="respuestaUsuario"
+            type="text"
+            placeholder="Escribe aquí la palabra bien escrita"
+            :disabled="mostrandoResultado || verificando"
+            class="input-respuesta"
+            autocomplete="off"
+            autofocus
+          />
+        </div>
 
         <p v-if="mostrandoResultado" class="resultado" :class="{ correcto: ultimoResultado.correcto, incorrecto: !ultimoResultado.correcto }">
           <span v-if="ultimoResultado.correcto">✓ ¡Correcto!</span>
           <span v-else>✕ Era: {{ ultimoResultado.respuestaCorrecta }}</span>
         </p>
 
-        <button v-if="!mostrandoResultado" type="submit" class="btn-primario" :disabled="verificando">
+        <!-- El botón se activa hasta que haya algo escrito -->
+        <button v-if="!mostrandoResultado" type="submit" class="btn-primario" :disabled="verificando || !respuestaUsuario.trim()">
           {{ verificando ? 'Comprobando...' : 'Comprobar' }}
         </button>
         <button v-else type="button" class="btn-primario" @click="siguientePregunta">
@@ -347,16 +354,53 @@ onMounted(cargarPreguntas);
   gap: 0.8rem;
 }
 
+/* Recuadro que remarca todo el espacio de respuesta */
+.zona-respuesta {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  padding: 1rem;
+  background: #fff8d6;
+  border: 3px dashed var(--color-primario);
+  border-radius: 16px;
+}
+
+.zona-respuesta.bloqueada {
+  background: #f1f1ea;
+  border-color: var(--color-borde);
+}
+
+.etiqueta-respuesta {
+  font-weight: 700;
+  font-size: 1.05rem;
+  color: var(--color-primario);
+  text-align: left;
+}
+
+/* Campo grande, con borde grueso para que se vea dónde se responde */
 .input-respuesta {
-  padding: 0.7rem 1rem;
-  border: 1px solid var(--color-borde);
-  border-radius: 10px;
+  padding: 1rem 1.2rem;
+  border: 3px solid var(--color-primario);
+  border-radius: 12px;
+  font-size: 1.4rem;
+  text-align: center;
+  background: #ffffff;
+  box-shadow: 0 4px 10px rgba(92, 122, 63, 0.25);
+}
+
+.input-respuesta::placeholder {
+  color: #8a8a7a;
   font-size: 1rem;
 }
 
 .input-respuesta:focus {
-  outline: 2px solid var(--color-primario);
-  border-color: var(--color-primario);
+  outline: 4px solid #ffd54f;
+  border-color: var(--color-primario-hover);
+}
+
+.input-respuesta:disabled {
+  background: #eeeee6;
+  box-shadow: none;
 }
 
 .resultado {
@@ -391,8 +435,9 @@ onMounted(cargarPreguntas);
   background-color: var(--color-primario-hover);
 }
 
+/* Botón apagado hasta que se escriba algo */
 .btn-primario:disabled {
-  opacity: 0.6;
+  opacity: 0.45;
   cursor: not-allowed;
 }
 

@@ -34,8 +34,10 @@
     <!-- Juego en curso (infinito hasta perder las 4 vidas) -->
     <div v-else-if="jugando" class="tarjeta-juego">
       <div class="barra-superior-juego">
-        <span>Atrapa: <strong class="letra-destacada">{{ objetivoActual }}</strong></span>
-        <span class="vidas">
+        <span class="bloque-objetivo">
+          Atrapa:
+          <strong :key="objetivoActual" class="letra-destacada" :class="{ cambio: avisoCambioObjetivo }">{{ objetivoActual }}</strong>
+        </span>        <span class="vidas">
           <span v-for="n in 4" :key="n">{{ n <= vidas ? '❤️' : '🖤' }}</span>
         </span>
         <span>Aciertos: {{ aciertos }} / {{ umbralParaAvanzar }}</span>
@@ -70,8 +72,7 @@
 
       <!-- RF_24 / RN_06: pista visual tras 3 fallos seguidos -->
       <p v-if="ayudaActiva" class="texto-ayuda">💡 Ayuda: las letras caen más lento hasta que aciertes una.</p>
-      <p v-if="letraNuevaRecienDesbloqueada" class="texto-letra-nueva">✨ ¡Nueva letra en juego: {{ letraNuevaRecienDesbloqueada }}!</p>
-      <p v-else-if="rachaActual >= 2" class="texto-racha">🔥 ¡Racha x{{ rachaActual }}!</p>
+      <p v-if="avisoCambioObjetivo" class="aviso-cambio-objetivo">🎯 Ahora atrapa la «{{ objetivoActual }}»</p>      <p v-else-if="rachaActual >= 2" class="texto-racha">🔥 ¡Racha x{{ rachaActual }}!</p>
     </div>
 
     <!-- Pantalla final: perdiste las 4 vidas -->
@@ -127,7 +128,7 @@ import PanelIntentos from '@/componentes/PanelIntentos.vue'
 import { useIntentosEjercicio } from '../composables/useIntentosEjercicio'
 
 const progresoStore = useProgresoStore();
-const { sonidoAcierto, sonidoError, sonidoVidaPerdida } = useSonidosJuego();
+const { sonidoAcierto, sonidoError, sonidoVidaPerdida, sonidoCambioObjetivo } = useSonidosJuego();
 const intentos = useIntentosEjercicio('CU-EJ-05'); // RN_07: máximo 3 intentos por subnivel
 
 const ALTURA_AREA = 350; // px, debe coincidir con el CSS de .area-caida
@@ -178,6 +179,7 @@ const terminado = ref(false);
 const avanzaste = ref(false);
 const vidas = ref(VIDAS_INICIALES);
 const objetivoActual = ref('');
+const avisoCambioObjetivo = ref(false);
 const letrasActivas = ref([]);
 const aciertos = ref(0);
 const puntosGanados = ref(0);
@@ -194,6 +196,7 @@ let idSiguiente = 0;
 let idEfecto = 0;
 let intervaloJuego = null;
 let avisoLetraNuevaTimeout = null;
+let avisoCambioTimeout = null;
 
 // Se miden en "tiempo transcurrido desde que empezó la ronda", para
 // poder decidir cuándo toca subir la dificultad, cuándo toca rotar el
@@ -225,7 +228,7 @@ async function cargarConfiguracion() {
   }
 }
 
-function elegirNuevoObjetivo() {
+function elegirNuevoObjetivo(avisar = true) {
   // El objetivo siempre se elige entre las letras YA desbloqueadas —
   // no tendría sentido pedirle al usuario atrapar una letra que
   // todavía ni siquiera ha aparecido en pantalla
@@ -238,7 +241,20 @@ function elegirNuevoObjetivo() {
   const candidatas = pool.filter((l) => l !== objetivoActual.value);
   objetivoActual.value = candidatas[Math.floor(Math.random() * candidatas.length)];
   objetivosVistos.add(objetivoActual.value);
-}
+
+    if (avisar) avisarCambioObjetivo();
+    }
+
+    function avisarCambioObjetivo() {
+      avisoCambioObjetivo.value = true;
+      sonidoCambioObjetivo();
+      clearTimeout(avisoCambioTimeout);
+      avisoCambioTimeout = setTimeout(() => {
+        avisoCambioObjetivo.value = false;
+      }, 2000);
+    }
+  
+
 
 // Agrega UNA letra nueva del pool completo a las letras desbloqueadas,
 // si todavía queda alguna por desbloquear. Esto es lo que hace que la
@@ -280,7 +296,7 @@ function comenzarJuego() {
   solucionRonda.value = [];
   objetivosVistos.clear();
 
-  elegirNuevoObjetivo();
+  elegirNuevoObjetivo(false);
 
   jugando.value = true;
   terminado.value = false;
@@ -527,8 +543,31 @@ onUnmounted(() => {
 }
 
 .letra-destacada {
+  display: inline-block;
   color: var(--color-primario);
   font-size: 1.3rem;
+  padding: 0 0.4rem;
+  border-radius: 8px;
+}
+
+.letra-destacada.cambio {
+  background: #fff3b0;
+  animation: pulso-objetivo 0.6s ease-in-out 3;
+}
+
+@keyframes pulso-objetivo {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.6); }
+}
+
+.aviso-cambio-objetivo {
+  text-align: center;
+  font-weight: 700;
+  background: #fff3b0;
+  color: #3a3a2c;
+  border-radius: 10px;
+  padding: 0.4rem 0.8rem;
+  margin: 0.4rem 0;
 }
 
 .instruccion-teclado,

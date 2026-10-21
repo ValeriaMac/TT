@@ -44,5 +44,10 @@ export function useSonidosJuego() {
         sonidoVidaPerdida: () => reproducirTono(120, 350, 'square'),
         // Un tono distinto y más largo para cuando se completa la ronda entera
         sonidoRondaCompleta: () => reproducirTono(900, 300),
+        sonidoCambioObjetivo: () => {
+            reproducirTono(520, 110);
+            setTimeout(() => reproducirTono(780, 150), 120);
+        },
     };
 }
+

@@ -640,23 +640,34 @@ function ignorarPalabra(error) {
 }
 
 /* ---- Editor ---- */
+.editor-contenedor {
+  min-height: 350px;
+  padding: 1.5rem;
+  border-radius: var(--radio-tarjeta);
+  box-sizing: border-box;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.08);
+  transition: box-shadow 0.15s;
+}
+
+.editor-contenedor:focus-within {
+  box-shadow: 0 0 0 2px var(--color-primario);
+}
+
 .editor-textarea {
   width: 100%;
   min-height: 350px;
-  padding: 1.5rem;
-  border: 1px solid var(--color-borde);
-  border-radius: var(--radio-tarjeta);
-  background: white;
+  padding: 0;
+  border: none;
+  outline: none;
+  background: transparent;
+  color: inherit;
   font: inherit;
-  line-height: 1.6;
+  letter-spacing: inherit;
+  word-spacing: inherit;
+  line-height: inherit;
   box-sizing: border-box;
-  white-space: pre-wrap; /* respeta espacios y saltos de línea, igual que un textarea */
+  white-space: pre-wrap;
   word-wrap: break-word;
-}
-
-.editor-textarea:focus {
-  outline: 2px solid var(--color-primario);
-  border-color: var(--color-primario);
 }
 
 /* Placeholder: como un contenteditable no tiene el atributo
@@ -793,7 +804,7 @@ function ignorarPalabra(error) {
     padding-right: 0;
   }
 
-  .editor-textarea {
+  .editor-contenedor {
     padding: 1rem;
   }
 }
