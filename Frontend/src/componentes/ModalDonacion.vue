@@ -77,7 +77,7 @@ function manejarDonar() {
 }
 
 .tarjeta-modal {
-  background: white;
+  background: var(--color-tarjeta);
   border-radius: 16px;
   padding: 2rem;
   max-width: 320px;
@@ -118,7 +118,7 @@ function manejarDonar() {
   padding: 0.7rem 0;
   border: 1px solid var(--color-borde);
   border-radius: var(--radio-boton);
-  background: white;
+  background: var(--color-tarjeta);
   cursor: pointer;
   font-weight: 600;
 }

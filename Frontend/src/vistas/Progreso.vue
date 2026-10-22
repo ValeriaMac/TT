@@ -160,17 +160,17 @@ function formatearFecha(fecha) {
   border-radius: 999px;
   font-size: 0.85rem;
   font-weight: 600;
-  background: #f5f0dd;
+  background: var(--color-aviso-fondo);
   color: #8a6d00;
 }
 
 .porcentaje.bueno {
-  background: #e6f4ea;
+  background: var(--color-ok-fondo);
   color: #1e7e34;
 }
 
 .porcentaje.malo {
-  background: #fdecea;
+  background: var(--color-error-fondo);
   color: #c0392b;
 }
 

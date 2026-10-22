@@ -348,7 +348,7 @@ async function manejarEliminarCuenta() {
 .btn-peligro {
   width: 100%;
   padding: 0.7rem;
-  background: #fdecea;
+  background: var(--color-error-fondo);
   color: #c0392b;
   border: 1px solid #f5c6cb;
   border-radius: var(--radio-boton);

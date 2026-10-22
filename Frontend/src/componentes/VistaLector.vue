@@ -29,7 +29,7 @@
         </option>
       </select>
 
-      <button class="btn-barra" @click="emit('regresar')">↑ Subir EPUB</button>
+      <button class="btn-barra" @click="emit('regresar')">← Documentos</button>
     </div>
 
     <p v-if="cargando">Cargando libro...</p>
@@ -60,8 +60,32 @@ import api from '../servicios/api'
 
 const props = defineProps({
   url: String,
-  nombreArchivo: String
+  nombreArchivo: String,
+  // Texto de un documento creado en Escritura (en lugar de un EPUB)
+  contenidoTexto: { type: String, default: null },
+  tituloDocumento: { type: String, default: '' }
 })
+
+// Convierte el texto plano del editor (con sus marcas **negrita**, *cursiva*,
+// # títulos) en HTML sencillo para poder leerlo y resaltar palabra por palabra
+const escaparHtml = (t) => t.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+const textoAHtml = (texto) => {
+  return texto
+    .split(/\n+/)
+    .map((linea) => linea.trim())
+    .filter((linea) => linea !== '')
+    .map((linea) => {
+      let etiqueta = 'p'
+      if (linea.startsWith('## ')) { etiqueta = 'h3'; linea = linea.slice(3) }
+      else if (linea.startsWith('# ')) { etiqueta = 'h2'; linea = linea.slice(2) }
+      const html = escaparHtml(linea)
+        .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+        .replace(/\*(.+?)\*/g, '<em>$1</em>')
+        .replace(/~~(.+?)~~/g, '<s>$1</s>')
+      return `<${etiqueta}>${html}</${etiqueta}>`
+    })
+    .join('')
+}
 
 // Texto de muestra que se usa cuando no hay ningún documento elegido
 // (por ejemplo, al entrar a /lectura directo desde el menú, sin pasar
@@ -92,7 +116,7 @@ const progresoGuardado = ref(false)
 let libro = null
 let palabrasDOM = []
 
-const claveProgreso = `progreso-${props.nombreArchivo || 'texto-predeterminado'}`
+const claveProgreso = `progreso-${props.nombreArchivo || props.tituloDocumento || 'texto-predeterminado'}`
 
 // ===== Personalización visual (RF_05-RF_08) =====
 const configuracionStore = useConfiguracionStore()
@@ -153,10 +177,12 @@ const agregarEstilos = () => {
     #contenedor-libro hr { border-color: #ccc; margin: 30px 0; }
     #contenedor-libro em, #contenedor-libro i { color: ${est.color} !important; }
     #contenedor-libro strong, #contenedor-libro b { color: ${est.color} !important; }
-    .palabra-resaltada {
-      background-color: yellow !important;
-      color: black !important;
+    #contenedor-libro .palabra.palabra-resaltada,
+    #contenedor-libro span.palabra-resaltada {
+      background-color: #ffe600 !important;
+      color: #000000 !important;
       border-radius: 3px;
+      box-shadow: 0 0 0 2px #ffe600;
     }
   `
   document.head.appendChild(estilos)
@@ -251,6 +277,13 @@ const mostrarContenido = (html) => {
 }
 
 const cargarLibro = async () => {
+  // Documento de texto creado por la persona en Escritura
+  if (props.contenidoTexto !== null && props.contenidoTexto !== undefined) {
+    titulo.value = props.tituloDocumento || 'Documento'
+    mostrarContenido(textoAHtml(props.contenidoTexto) || '<p>Este documento está vacío.</p>')
+    return
+  }
+
   // Sin documento elegido: se muestra el texto predeterminado
   // y no se intenta cargar ningún EPUB
   if (!props.url) {

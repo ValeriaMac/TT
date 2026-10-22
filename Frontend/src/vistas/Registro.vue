@@ -121,7 +121,7 @@ async function manejarRegistro() {
   align-items: center;
   justify-content: center;
   padding: 1rem;
-  background: linear-gradient(to bottom right, #f8f9f5, #e8edd9, #d4e0b8);
+  background: var(--degradado-pagina);
 }
 
 .tarjeta-auth {
@@ -193,7 +193,7 @@ async function manejarRegistro() {
 }
 
 .campo-tutor {
-  background: #f5f7ee;
+  background: var(--color-suave);
   padding: 0.9rem;
   border-radius: 12px;
 }
@@ -207,7 +207,7 @@ async function manejarRegistro() {
 
 .mensaje-error {
   color: #c0392b;
-  background-color: #fdecea;
+  background-color: var(--color-error-fondo);
   padding: 0.7rem;
   border-radius: 10px;
   font-size: 0.9rem;
@@ -257,7 +257,7 @@ async function manejarRegistro() {
 
 .icono-correo {
   font-size: 3rem;
-  background: #f0f4e8;
+  background: var(--color-verde-suave);
   width: 80px;
   height: 80px;
   border-radius: 50%;

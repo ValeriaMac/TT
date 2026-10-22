@@ -232,7 +232,7 @@ const modulos = [
   display: flex;
   align-items: center;
   gap: 1.5rem;
-  background: linear-gradient(to right, #eef4e8, #f5f0dd);
+  background: var(--degradado-banda);
   border-radius: var(--radio-tarjeta);
   padding: 2rem;
   margin-bottom: 1.5rem;
@@ -414,7 +414,7 @@ const modulos = [
   align-items: center;
   justify-content: space-between;
   gap: 1rem;
-  background: linear-gradient(to right, #eef4e8, #f0ead9);
+  background: var(--degradado-banda);
   border-radius: var(--radio-tarjeta);
   padding: 1.2rem 1.5rem;
 }

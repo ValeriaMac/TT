@@ -631,7 +631,7 @@ function ignorarPalabra(error) {
 }
 
 .btn-formato:hover {
-  background: #f0f0e8;
+  background: var(--color-suave);
 }
 
 .btn-formato.activo {
@@ -738,7 +738,7 @@ function ignorarPalabra(error) {
 }
 
 .btn-sugerencia {
-  background: #f0f4e8;
+  background: var(--color-verde-suave);
   border: 1px solid var(--color-borde);
   border-radius: var(--radio-boton);
   padding: 0.3rem 0.8rem;
@@ -770,7 +770,7 @@ function ignorarPalabra(error) {
 }
 
 .btn-ignorar:hover {
-  background: #fdecea;
+  background: var(--color-error-fondo);
   color: #c0392b;
   border-color: #c0392b;
 }

@@ -527,7 +527,7 @@ onUnmounted(() => {
 
 .indicador-nivel {
   display: inline-block;
-  background: #eef4e8;
+  background: var(--color-verde-suave);
   color: var(--color-primario);
   font-weight: 600;
   font-size: 0.85rem;
@@ -551,7 +551,7 @@ onUnmounted(() => {
 }
 
 .letra-destacada.cambio {
-  background: #fff3b0;
+  background: var(--color-aviso-fondo);
   animation: pulso-objetivo 0.6s ease-in-out 3;
 }
 
@@ -563,7 +563,7 @@ onUnmounted(() => {
 .aviso-cambio-objetivo {
   text-align: center;
   font-weight: 700;
-  background: #fff3b0;
+  background: var(--color-aviso-fondo);
   color: #3a3a2c;
   border-radius: 10px;
   padding: 0.4rem 0.8rem;
@@ -611,7 +611,7 @@ onUnmounted(() => {
 .area-caida {
   position: relative;
   height: 350px;
-  background: linear-gradient(to bottom, #eef4f8, #f7f7f0);
+  background: var(--degradado-cielo);
   border-radius: 12px;
   overflow: hidden;
   border: 1px solid var(--color-borde);
@@ -678,7 +678,7 @@ onUnmounted(() => {
   width: 44px;
   height: 44px;
   border-radius: 50%;
-  background: white;
+  background: var(--color-tarjeta);
   border: 2px solid var(--color-primario);
   display: flex;
   align-items: center;
@@ -729,7 +729,7 @@ onUnmounted(() => {
 }
 
 .dato-resultado {
-  background: #f7f7f0;
+  background: var(--color-suave);
   border-radius: 12px;
   padding: 1rem 0.5rem;
 }
@@ -756,7 +756,7 @@ onUnmounted(() => {
 
 .btn-secundario {
   padding: 0.7rem;
-  background: white;
+  background: var(--color-tarjeta);
   border: 1px solid var(--color-borde);
   border-radius: var(--radio-boton);
   cursor: pointer;

@@ -122,12 +122,12 @@
 
 .ejercicio-item.deshabilitado {
   color: var(--color-texto-secundario);
-  background: #f5f5f0;
+  background: var(--color-suave);
   opacity: 0.7;
 }
 
 .ejercicio-item.ejercicio-activo {
-  background: #eef4e8;
+  background: var(--color-verde-suave);
   color: var(--color-primario);
   font-weight: 600;
 }

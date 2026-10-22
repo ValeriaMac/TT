@@ -344,7 +344,7 @@ onUnmounted(() => {
 
 .indicador-nivel {
   display: inline-block;
-  background: #eef4e8;
+  background: var(--color-verde-suave);
   color: var(--color-primario);
   font-weight: 600;
   font-size: 0.85rem;
@@ -372,7 +372,7 @@ onUnmounted(() => {
 }
 
 .caja-palabra {
-  background: #f7f7f0;
+  background: var(--color-suave);
   border-radius: 12px;
   padding: 2.5rem 1rem;
   font-size: 2.2rem;
@@ -383,11 +383,11 @@ onUnmounted(() => {
 }
 
 .caja-palabra.resaltado-correcto {
-  background: #e6f4ea;
+  background: var(--color-ok-fondo);
 }
 
 .caja-palabra.resaltado-incorrecto {
-  background: #fdecea;
+  background: var(--color-error-fondo);
 }
 
 .barra-tiempo-contenedor {
@@ -420,7 +420,7 @@ onUnmounted(() => {
 }
 
 .btn-izquierda {
-  background: #eef4e8;
+  background: var(--color-verde-suave);
   color: var(--color-primario);
 }
 
@@ -430,7 +430,7 @@ onUnmounted(() => {
 }
 
 .btn-derecha {
-  background: #eef4e8;
+  background: var(--color-verde-suave);
   color: var(--color-primario);
 }
 
@@ -488,7 +488,7 @@ onUnmounted(() => {
 }
 
 .dato-resultado {
-  background: #f7f7f0;
+  background: var(--color-suave);
   border-radius: 12px;
   padding: 1rem 0.5rem;
 }
@@ -531,7 +531,7 @@ onUnmounted(() => {
 
 .btn-secundario {
   padding: 0.7rem;
-  background: white;
+  background: var(--color-tarjeta);
   border: 1px solid var(--color-borde);
   border-radius: var(--radio-boton);
   cursor: pointer;

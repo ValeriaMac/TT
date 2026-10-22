@@ -26,6 +26,13 @@ textarea {
   font-family: inherit;
 }
 
+/* Los campos toman el color del contenedor (así se leen en tema oscuro) */
+input,
+select,
+textarea {
+  color: inherit;
+}
+
 #app {
   max-width: 1280px;
   margin: 0 auto;
@@ -58,6 +65,39 @@ a,
   --radio-boton: 999px;
   --fuente-sistema: 'OpenDyslexic', 'Comic Neue', Verdana, sans-serif;
   --fuente-encabezados: var(--fuente-sistema);
+
+  /* Colores que cambian con el tema del sistema */
+  --color-borde: #dcdccf;
+  --color-suave: #f5f5f0;
+  --color-verde-suave: #eef4e8;
+  --color-ok-fondo: #e6f4ea;
+  --color-error-fondo: #fdecea;
+  --color-aviso-fondo: #fff3b0;
+  --color-sombra: rgba(0, 0, 0, 0.08);
+  --degradado-pagina: linear-gradient(to bottom right, #f8f9f5, #e8edd9, #d4e0b8);
+  --degradado-banda: linear-gradient(to right, #eef4e8, #f5f0dd);
+  --degradado-cielo: linear-gradient(to bottom, #eef4f8, #f7f7f0);
+}
+
+/* Tema oscuro del sistema (la personalización de lectura/escritura no cambia) */
+:root[data-tema='oscuro'] {
+  --color-fondo-app: #1b1c17;
+  --color-tarjeta: #2a2b24;
+  --color-primario: #6f9250;
+  --color-primario-hover: #82a763;
+  --color-texto-principal: #ecece0;
+  --color-texto-secundario: #b4b4a4;
+  --color-borde: #46473d;
+  --color-suave: #353630;
+  --color-verde-suave: #2f3a27;
+  --color-ok-fondo: #24402b;
+  --color-error-fondo: #4a2a27;
+  --color-aviso-fondo: #4a4320;
+  --color-sombra: rgba(0, 0, 0, 0.5);
+  --degradado-pagina: linear-gradient(to bottom right, #1b1c17, #232a1c, #2b3622);
+  --degradado-banda: linear-gradient(to right, #2f3a27, #3a3822);
+  --degradado-cielo: linear-gradient(to bottom, #232b33, #2a2b24);
+  color-scheme: dark;
 }
 
 body {

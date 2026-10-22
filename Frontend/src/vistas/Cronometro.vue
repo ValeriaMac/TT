@@ -336,7 +336,7 @@ onUnmounted(() => clearInterval(intervaloReloj));
 
 .indicador-nivel {
   display: inline-block;
-  background: #eef4e8;
+  background: var(--color-verde-suave);
   color: var(--color-primario);
   font-weight: 600;
   font-size: 0.85rem;
@@ -352,7 +352,7 @@ onUnmounted(() => clearInterval(intervaloReloj));
 }
 
 .opcion-cronometro {
-  background: #f7f7f0;
+  background: var(--color-suave);
   border-radius: 12px;
   padding: 1rem 1.2rem;
   margin-bottom: 1.2rem;
@@ -390,7 +390,7 @@ onUnmounted(() => clearInterval(intervaloReloj));
 }
 
 .caja-oracion {
-  background: #f7f7f0;
+  background: var(--color-suave);
   border-radius: 12px;
   padding: 1.5rem;
   font-size: 1.15rem;
@@ -406,7 +406,7 @@ onUnmounted(() => clearInterval(intervaloReloj));
 }
 
 .chip-lectura {
-  background: #eef4e8;
+  background: var(--color-verde-suave);
   color: var(--color-primario);
   font-size: 0.8rem;
   font-weight: 600;
@@ -456,7 +456,7 @@ onUnmounted(() => clearInterval(intervaloReloj));
 
 .btn-secundario {
   padding: 0.7rem 1.2rem;
-  background: white;
+  background: var(--color-tarjeta);
   border: 1px solid var(--color-borde);
   border-radius: var(--radio-boton);
   cursor: pointer;
@@ -503,7 +503,7 @@ onUnmounted(() => clearInterval(intervaloReloj));
 }
 
 .confirmacion-lectura {
-  background: #f7f7f0;
+  background: var(--color-suave);
   border-radius: 12px;
   padding: 1.3rem;
   text-align: center;
@@ -557,7 +557,7 @@ onUnmounted(() => clearInterval(intervaloReloj));
 }
 
 .dato-resultado {
-  background: #f7f7f0;
+  background: var(--color-suave);
   border-radius: 12px;
   padding: 1rem 0.5rem;
 }

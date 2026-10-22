@@ -78,7 +78,7 @@ async function manejarEnvio() {
   align-items: center;
   justify-content: center;
   padding: 1rem;
-  background: linear-gradient(to bottom right, #f8f9f5, #e8edd9, #d4e0b8);
+  background: var(--degradado-pagina);
 }
 
 .tarjeta-auth {
@@ -144,7 +144,7 @@ async function manejarEnvio() {
 
 .mensaje-error {
   color: #c0392b;
-  background-color: #fdecea;
+  background-color: var(--color-error-fondo);
   padding: 0.7rem;
   border-radius: 10px;
   font-size: 0.9rem;
@@ -175,7 +175,7 @@ async function manejarEnvio() {
   height: 48px;
   font-size: 1rem;
   font-weight: 600;
-  background: white;
+  background: var(--color-tarjeta);
   color: var(--color-texto-principal);
   border: 1px solid var(--color-borde);
   border-radius: 12px;
@@ -184,7 +184,7 @@ async function manejarEnvio() {
 }
 
 .btn-secundario:hover {
-  background: #f5f5f0;
+  background: var(--color-suave);
 }
 
 .enlace-volver {
@@ -206,7 +206,7 @@ async function manejarEnvio() {
 
 .icono-correo {
   font-size: 3rem;
-  background: #f0f4e8;
+  background: var(--color-verde-suave);
   width: 80px;
   height: 80px;
   border-radius: 50%;

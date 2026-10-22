@@ -42,6 +42,13 @@
       </div>
 
       <div class="info-usuario">
+        <button
+          type="button"
+          class="btn-tema"
+          :title="tema === 'oscuro' ? 'Cambiar a tema claro' : 'Cambiar a tema oscuro'"
+          :aria-label="tema === 'oscuro' ? 'Cambiar a tema claro' : 'Cambiar a tema oscuro'"
+          @click="alternarTema"
+        >{{ tema === 'oscuro' ? '☀️' : '🌙' }}</button>
         <router-link to="/perfil" class="nombre-usuario">👤 {{ authStore.usuario?.nombre }}</router-link>
         <button @click="manejarCerrarSesion" class="btn-secundario">Salir</button>
       </div>
@@ -59,6 +66,16 @@
       </button>
     </nav>
 
+    <!-- Sin sesión (landing, login, registro) el botón de tema flota arriba a la derecha -->
+    <button
+      v-if="!authStore.estaAutenticado"
+      type="button"
+      class="btn-tema btn-tema-flotante"
+      :title="tema === 'oscuro' ? 'Cambiar a tema claro' : 'Cambiar a tema oscuro'"
+      :aria-label="tema === 'oscuro' ? 'Cambiar a tema claro' : 'Cambiar a tema oscuro'"
+      @click="alternarTema"
+    >{{ tema === 'oscuro' ? '☀️' : '🌙' }}</button>
+
     <main :class="{ 'con-nav-fijo': authStore.estaAutenticado }">
       <RouterView />
     </main>
@@ -74,7 +91,9 @@ import { useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from './store/auth.store'
 import { useProgresoStore } from './store/progreso.store'
 import BannerConexion from './componentes/BannerConexion.vue'
+import { useTema } from './composables/useTema'
 
+const { tema, alternarTema } = useTema()
 const router = useRouter()
 const route = useRoute()
 
@@ -168,6 +187,26 @@ function manejarCerrarSesion() {
 .enlace-nav.deshabilitado {
   opacity: 0.4;
   cursor: not-allowed;
+}
+
+.btn-tema {
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border: 1px solid var(--color-borde);
+  border-radius: 50%;
+  background: var(--color-tarjeta);
+  color: var(--color-texto-principal);
+  font-size: 1.05rem;
+  line-height: 1;
+  cursor: pointer;
+}
+.btn-tema:hover { background: var(--color-suave); }
+.btn-tema-flotante {
+  position: fixed;
+  top: 12px;
+  right: 12px;
+  z-index: 200;
 }
 
 .info-usuario {

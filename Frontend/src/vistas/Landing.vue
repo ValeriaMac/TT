@@ -148,7 +148,7 @@ import imagenLector from '@/assets/lector.jpg';
   display: flex;
   justify-content: center;
   align-items: center;
-  background: #f0f0e8;
+  background: var(--color-suave);
   border-radius: var(--radio-tarjeta);
   padding: 1.5rem;
   box-sizing: border-box;
@@ -180,7 +180,7 @@ import imagenLector from '@/assets/lector.jpg';
 .icono-caracteristica {
   width: 48px;
   height: 48px;
-  background: #eef4e8;
+  background: var(--color-verde-suave);
   border-radius: 14px;
   display: flex;
   align-items: center;

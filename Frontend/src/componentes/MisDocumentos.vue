@@ -39,6 +39,9 @@
         <p class="descripcion-documento">Documento de texto</p>
 
         <div class="acciones-documento">
+          <button class="btn-accion" @click="leerDocumentoTexto(doc.id)">
+            📖 Leer
+          </button>
           <button class="btn-accion" @click="editarDocumentoTexto(doc.id)">
             ✎ Editar
           </button>
@@ -173,6 +176,10 @@ const editarEpub = (nombre) => {
   router.push({ path: '/escritura', query: { epub: nombre } })
 }
 
+const leerDocumentoTexto = (id) => {
+  router.push({ path: '/lectura', query: { documentoId: id } })
+}
+
 const editarDocumentoTexto = (id) => {
   router.push({ path: '/escritura', query: { documentoId: id } })
 }
@@ -230,7 +237,7 @@ onMounted(() => {
 }
 
 .btn-secundario {
-  background: white;
+  background: var(--color-tarjeta);
   border: 1px solid var(--color-borde);
   border-radius: var(--radio-boton);
   padding: 0.6rem 1.1rem;
@@ -239,7 +246,7 @@ onMounted(() => {
 }
 
 .btn-secundario:hover {
-  background: #f5f5f0;
+  background: var(--color-suave);
 }
 
 .btn-primario {
@@ -287,7 +294,7 @@ onMounted(() => {
 }
 
 .icono-documento {
-  background: #f0f4e8;
+  background: var(--color-verde-suave);
   width: 44px;
   height: 44px;
   border-radius: 12px;
@@ -328,7 +335,7 @@ onMounted(() => {
 
 .btn-accion {
   flex: 1;
-  background: white;
+  background: var(--color-tarjeta);
   border: 1px solid var(--color-borde);
   border-radius: 10px;
   padding: 0.5rem;
@@ -337,7 +344,7 @@ onMounted(() => {
 }
 
 .btn-accion:hover:not(:disabled) {
-  background: #f5f5f0;
+  background: var(--color-suave);
 }
 
 .btn-accion:disabled {
@@ -346,7 +353,7 @@ onMounted(() => {
 }
 
 .btn-eliminar {
-  background: white;
+  background: var(--color-tarjeta);
   border: 1px solid var(--color-borde);
   border-radius: 10px;
   padding: 0.5rem 0.7rem;
@@ -355,7 +362,7 @@ onMounted(() => {
 }
 
 .btn-eliminar:hover {
-  background: #fdecea;
+  background: var(--color-error-fondo);
 }
 
 .estado-vacio {

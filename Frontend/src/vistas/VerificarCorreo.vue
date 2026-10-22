@@ -54,7 +54,7 @@ onMounted(async () => {
   align-items: center;
   justify-content: center;
   padding: 1rem;
-  background: linear-gradient(to bottom right, #f8f9f5, #e8edd9, #d4e0b8);
+  background: var(--degradado-pagina);
 }
 
 .tarjeta-auth {
@@ -72,7 +72,7 @@ onMounted(async () => {
 
 .icono-correo {
   font-size: 3rem;
-  background: #f0f4e8;
+  background: var(--color-verde-suave);
   width: 80px;
   height: 80px;
   border-radius: 50%;

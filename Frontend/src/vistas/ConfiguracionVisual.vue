@@ -424,7 +424,7 @@ async function manejarEliminar(id) {
   height: 34px;
   border-radius: 50%;
   border: 2px solid var(--color-borde, #e0e0d0);
-  background: white;
+  background: var(--color-tarjeta);
   cursor: pointer;
   font-weight: 600;
 }

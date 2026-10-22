@@ -72,7 +72,7 @@ async function manejarLogin() {
   align-items: center;
   justify-content: center;
   padding: 1rem;
-  background: linear-gradient(to bottom right, #f8f9f5, #e8edd9, #d4e0b8);
+  background: var(--degradado-pagina);
 }
 
 .tarjeta-auth {
@@ -143,7 +143,7 @@ async function manejarLogin() {
 
 .mensaje-error {
   color: #c0392b;
-  background-color: #fdecea;
+  background-color: var(--color-error-fondo);
   padding: 0.7rem;
   border-radius: 10px;
   font-size: 0.9rem;

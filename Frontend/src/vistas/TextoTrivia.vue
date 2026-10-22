@@ -306,7 +306,7 @@ onMounted(cargarPreguntas);
 
 .indicador-nivel {
   display: inline-block;
-  background: #eef4e8;
+  background: var(--color-verde-suave);
   color: var(--color-primario);
   font-weight: 600;
   font-size: 0.85rem;
@@ -328,7 +328,7 @@ onMounted(cargarPreguntas);
 }
 
 .caja-lectura {
-  background: #f7f7f0;
+  background: var(--color-suave);
   border-radius: 12px;
   padding: 1.3rem;
   line-height: 1.7;
@@ -360,28 +360,28 @@ onMounted(cargarPreguntas);
   padding: 0.8rem 1rem;
   border-radius: 10px;
   border: 1px solid var(--color-borde);
-  background: white;
+  background: var(--color-tarjeta);
   cursor: pointer;
   font-size: 0.95rem;
 }
 
 .btn-opcion:hover:not(:disabled) {
-  background: #f5f5f0;
+  background: var(--color-suave);
 }
 
 .btn-opcion.opcion-seleccionada {
   border-color: var(--color-primario);
-  background: #eef4e8;
+  background: var(--color-verde-suave);
 }
 
 .btn-opcion.opcion-correcta {
-  background: #e6f4ea;
+  background: var(--color-ok-fondo);
   border-color: #1e7e34;
   color: #1e7e34;
 }
 
 .btn-opcion.opcion-incorrecta {
-  background: #fdecea;
+  background: var(--color-error-fondo);
   border-color: #c0392b;
   color: #c0392b;
 }
@@ -420,7 +420,7 @@ onMounted(cargarPreguntas);
 }
 
 .dato-resultado {
-  background: #f7f7f0;
+  background: var(--color-suave);
   border-radius: 12px;
   padding: 1rem 0.5rem;
 }
@@ -470,7 +470,7 @@ onMounted(cargarPreguntas);
 
 .btn-secundario {
   padding: 0.7rem;
-  background: white;
+  background: var(--color-tarjeta);
   border: 1px solid var(--color-borde);
   border-radius: var(--radio-boton);
   cursor: pointer;

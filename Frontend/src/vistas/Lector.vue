@@ -10,6 +10,9 @@
       v-else
       :url="archivoUrl"
       :nombreArchivo="nombreArchivo"
+      :contenidoTexto="contenidoTexto"
+      :tituloDocumento="tituloDocumento"
+      :key="route.fullPath"
       @regresar="router.push('/documentos')"
     />
   </div>
@@ -29,9 +32,33 @@ const configuracionStore = useConfiguracionStore()
 const archivoUrl = ref(null)
 const nombreArchivo = ref('')
 const cargando = ref(false)
+// Documento de texto creado en Escritura (viene como ?documentoId=)
+const contenidoTexto = ref(null)
+const tituloDocumento = ref('')
 
 // Busca la URL real del EPUB a partir del nombre que viene en ?epub=
 async function cargarDesdeQuery() {
+  const idDocumento = route.query.documentoId
+  contenidoTexto.value = null
+  tituloDocumento.value = ''
+
+  // Documento de texto propio: se lee con la misma voz y resaltado que un EPUB
+  if (idDocumento) {
+    cargando.value = true
+    try {
+      const respuesta = await api.get(`/documentos/${idDocumento}`)
+      archivoUrl.value = null
+      nombreArchivo.value = ''
+      tituloDocumento.value = respuesta.data.documento.titulo
+      contenidoTexto.value = respuesta.data.documento.contenido || ''
+    } catch (err) {
+      contenidoTexto.value = null
+    } finally {
+      cargando.value = false
+    }
+    return
+  }
+
   const nombre = route.query.epub
 
   if (!nombre) {
@@ -53,7 +80,7 @@ async function cargarDesdeQuery() {
 
 // Si el usuario abre otro documento sin salir de /lectura (el query
 // cambia pero el componente no se vuelve a montar), esto lo detecta
-watch(() => route.query.epub, cargarDesdeQuery)
+watch(() => [route.query.epub, route.query.documentoId], cargarDesdeQuery)
 
 onMounted(async () => {
   if (!configuracionStore.config) {
