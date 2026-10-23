@@ -544,7 +544,8 @@ function ignorarPalabra(error) {
 
 <style scoped>
 .editor-widget {
-  max-width: 900px;
+  width: 100%;
+  max-width: 1500px;
   margin: 0 auto;
 }
 
@@ -641,7 +642,7 @@ function ignorarPalabra(error) {
 
 /* ---- Editor ---- */
 .editor-contenedor {
-  min-height: 350px;
+  min-height: max(350px, 60vh);
   padding: 1.5rem;
   border-radius: var(--radio-tarjeta);
   box-sizing: border-box;
@@ -655,7 +656,7 @@ function ignorarPalabra(error) {
 
 .editor-textarea {
   width: 100%;
-  min-height: 350px;
+  min-height: max(320px, calc(60vh - 3rem));
   padding: 0;
   border: none;
   outline: none;

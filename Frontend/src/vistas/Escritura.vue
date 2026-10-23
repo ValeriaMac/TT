@@ -12,7 +12,9 @@ import Editor from '@/componentes/Editor.vue'
 
 <style scoped>
 .pagina-escritura {
-  max-width: 950px;
+  width: 100%;
+  max-width: 1500px;
+  box-sizing: border-box;
   margin: 0 auto;
   padding: 1.5rem;
 }

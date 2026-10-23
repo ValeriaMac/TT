@@ -54,7 +54,7 @@
       ref="contenedorLibro"
       id="contenedor-libro"
       :style="progresoGuardado ? 'margin-top: 10px;' : 'margin-top: 0;'"
-      style="max-width: 700px; margin-left: auto; margin-right: auto; line-height: 1.8;"
+      style="width: 100%; max-width: 1500px; min-height: 65vh; box-sizing: border-box; margin-left: auto; margin-right: auto; line-height: 1.8;"
     ></div>
 
   </div>
@@ -560,7 +560,7 @@ onUnmounted(() => {
 .aviso-progreso {
   padding: 4px 4px;
   margin-bottom: 4px;
-  max-width: 700px;
+  max-width: 1500px;
   margin-left: auto;
   margin-right: auto;
   background: transparent;
