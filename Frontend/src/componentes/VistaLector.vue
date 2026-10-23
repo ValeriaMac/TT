@@ -8,7 +8,15 @@
       </button>
       <button class="btn-redondo" title="Detener" @click="detener">■</button>
       <button class="btn-redondo" title="Reiniciar" @click="reiniciar">↺</button>
+      <button
+        class="btn-redondo btn-ajustes"
+        :class="{ activo: opcionesAbiertas }"
+        title="Ajustes de lectura"
+        :aria-expanded="opcionesAbiertas"
+        @click="opcionesAbiertas = !opcionesAbiertas"
+      >⚙</button>
 
+      <div class="opciones-barra" :class="{ abierto: opcionesAbiertas }">
       <select v-model="vozSeleccionada" class="campo-barra" title="Voz">
         <option v-for="voz in vocesDisponibles" :key="voz.name" :value="voz.name">
           {{ voz.name }}
@@ -28,8 +36,9 @@
           {{ plantilla.nombre }}
         </option>
       </select>
+      </div>
 
-      <button class="btn-barra" @click="emit('regresar')">← Documentos</button>
+      <button class="btn-barra btn-docs" @click="emit('regresar')">← <span class="txt-docs">Documentos</span></button>
     </div>
 
     <p v-if="cargando">Cargando libro...</p>
@@ -53,6 +62,9 @@
 
 <script setup>
 import { ref, onMounted, onUnmounted } from 'vue'
+
+// En celular los ajustes (voz, velocidad, plantilla) se muestran solo al abrir ⚙
+const opcionesAbiertas = ref(false)
 import Epub from 'epubjs'
 import { useConfiguracionStore } from '../store/configuracion.store'
 import { useEstilosPersonalizacion } from '../composables/useEstilosPersonalizacion'
@@ -606,5 +618,45 @@ onUnmounted(() => {
   color: var(--color-texto-principal, #3a3a2c);
   font-size: 0.8rem;
   cursor: pointer;
+}
+
+/* En pantallas grandes, el contenedor de opciones no afecta el diseño */
+.opciones-barra { display: contents; }
+.btn-ajustes { display: none; }
+
+/* Celular: barra compacta, los ajustes se abren con el botón ⚙ */
+@media (max-width: 640px) {
+  .barra-lector {
+    gap: 8px;
+    padding: 8px 10px;
+    margin-bottom: 10px;
+  }
+  .btn-redondo { width: 36px; height: 36px; font-size: 14px; }
+  .btn-ajustes { display: inline-block; }
+  .btn-ajustes.activo {
+    background: var(--color-suave, #eef2e6);
+    border-color: var(--color-primario, #5c7a3f);
+  }
+  .btn-docs { margin-left: auto; padding: 6px 12px; }
+  .opciones-barra {
+    display: none;
+    order: 10;
+    flex: 0 0 100%;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+    padding-top: 8px;
+    border-top: 1px solid rgba(0, 0, 0, 0.1);
+  }
+  .opciones-barra.abierto { display: flex; }
+  .campo-barra {
+    max-width: none;
+    width: 100%;
+    border: 1px solid rgba(0, 0, 0, 0.15);
+    border-radius: 8px;
+  }
+  .grupo-velocidad { justify-content: space-between; }
+  .grupo-velocidad input { flex: 1; width: auto; }
+  .titulo-barra { min-width: 0; font-size: 0.8rem; }
 }
 </style>
