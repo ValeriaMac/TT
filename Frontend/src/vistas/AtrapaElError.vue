@@ -282,7 +282,9 @@ onMounted(cargarPreguntas);
 
 <style scoped>
 .pagina-ejercicio {
-  max-width: 600px;
+  width: 100%;
+  max-width: 1200px;
+  box-sizing: border-box;
   margin: 0 auto;
   padding: 1.5rem;
 }
