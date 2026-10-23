@@ -150,6 +150,7 @@ const cargarProgreso = () => {
 const agregarEstilos = () => {
   const est = estilosPersonalizacion.value
 
+  document.getElementById('estilos-libro')?.remove() // evita estilos duplicados
   const estilos = document.createElement('style')
   estilos.id = 'estilos-libro'
   estilos.textContent = `
@@ -183,6 +184,9 @@ const agregarEstilos = () => {
       color: #000000 !important;
       border-radius: 3px;
       box-shadow: 0 0 0 2px #ffe600;
+      text-decoration: underline;
+      text-decoration-thickness: 3px;
+      text-underline-offset: 4px;
     }
   `
   document.head.appendChild(estilos)
@@ -396,7 +400,37 @@ const reproducir = () => {
   iniciarSintesis(texto, 0)
 }
 
+// ===== Resaltado tipo karaoke =====
+// Lo normal es que el navegador avise cada palabra con el evento "boundary".
+// Pero algunas voces (por ejemplo las de Google en Chrome, o varias de celular)
+// NO mandan ese evento, y entonces nada se resaltaba. Para esos casos hay un
+// respaldo: si en 1.2 segundos no llega ningún aviso, el resaltado avanza solo,
+// calculando el tiempo de cada palabra según su largo y la velocidad elegida.
+let temporizadorRespaldo = null
+let temporizadorAvance = null
+
+const detenerKaraoke = () => {
+  if (temporizadorRespaldo) { clearTimeout(temporizadorRespaldo); temporizadorRespaldo = null }
+  if (temporizadorAvance) { clearTimeout(temporizadorAvance); temporizadorAvance = null }
+}
+
+const quitarResaltado = () => {
+  const anterior = contenedorLibro.value?.querySelector('.palabra-resaltada')
+  if (anterior) anterior.classList.remove('palabra-resaltada')
+}
+
+const resaltarPalabra = (indiceReal) => {
+  quitarResaltado()
+  const elemento = palabrasDOM[indiceReal]
+  if (!elemento) return
+  elemento.classList.add('palabra-resaltada')
+  elemento.scrollIntoView({ behavior: 'smooth', block: 'center' })
+  indicePausa.value = indiceReal
+}
+
 const iniciarSintesis = (texto, desdeIndice) => {
+  detenerKaraoke()
+
   const enunciado = new SpeechSynthesisUtterance(texto)
   enunciado.lang = 'es-MX'
   enunciado.rate = parseFloat(velocidad.value)
@@ -413,48 +447,56 @@ const iniciarSintesis = (texto, desdeIndice) => {
   }
 
   let ultimoIndice = 0
+  let llegoBoundary = false
+
+  // Respaldo: avanza palabra por palabra con un temporizador
+  const avanzarPorTiempo = (i) => {
+    if (i >= palabras.length) return
+    resaltarPalabra(desdeIndice + i)
+    const letras = palabras[i].textContent.trim().length
+    const duracion = Math.max(180, (letras + 1) * 70 / enunciado.rate)
+    temporizadorAvance = setTimeout(() => avanzarPorTiempo(i + 1), duracion)
+  }
 
   enunciado.onboundary = (evento) => {
-    if (evento.name === 'word') {
-      const anterior = contenedorLibro.value?.querySelector('.palabra-resaltada')
-      if (anterior) anterior.classList.remove('palabra-resaltada')
+    if (evento.name !== 'word') return
+    llegoBoundary = true
+    detenerKaraoke() // el navegador sí avisa: se usa su sincronización real
 
-      const charIndex = evento.charIndex
-      let indice = ultimoIndice
-      for (let i = ultimoIndice; i < posiciones.length; i++) {
-        if (posiciones[i] <= charIndex) {
-          indice = i
-        } else {
-          break
-        }
-      }
-      ultimoIndice = indice
-
-      const indiceReal = desdeIndice + indice
-      if (palabrasDOM[indiceReal]) {
-        palabrasDOM[indiceReal].classList.add('palabra-resaltada')
-        palabrasDOM[indiceReal].scrollIntoView({
-          behavior: 'smooth',
-          block: 'center'
-        })
-        indicePausa.value = indiceReal
+    const charIndex = evento.charIndex
+    let indice = ultimoIndice
+    for (let i = ultimoIndice; i < posiciones.length; i++) {
+      if (posiciones[i] <= charIndex) {
+        indice = i
+      } else {
+        break
       }
     }
+    ultimoIndice = indice
+    resaltarPalabra(desdeIndice + indice)
   }
 
   enunciado.onend = () => {
+    detenerKaraoke()
     leyendo.value = false
     pausado.value = false
     ultimoIndice = 0
-    const resaltada = contenedorLibro.value?.querySelector('.palabra-resaltada')
-    if (resaltada) resaltada.classList.remove('palabra-resaltada')
+    quitarResaltado()
   }
+
+  enunciado.onerror = () => { detenerKaraoke() }
 
   window.speechSynthesis.speak(enunciado)
   leyendo.value = true
+
+  // Si en 1.2 s no llegó ningún aviso de palabra, se usa el respaldo por tiempo
+  temporizadorRespaldo = setTimeout(() => {
+    if (!llegoBoundary && leyendo.value) avanzarPorTiempo(0)
+  }, 1200)
 }
 
 const pausar = () => {
+  detenerKaraoke()
   window.speechSynthesis.pause()
   leyendo.value = false
   pausado.value = true
@@ -462,6 +504,7 @@ const pausar = () => {
 }
 
 const detener = () => {
+  detenerKaraoke()
   window.speechSynthesis.cancel()
   leyendo.value = false
   pausado.value = false
@@ -478,6 +521,7 @@ const alCambiarPlantilla = async () => {
 }
 
 const reiniciar = () => {
+  detenerKaraoke()
   window.speechSynthesis.cancel()
   leyendo.value = false
   pausado.value = false
@@ -491,6 +535,7 @@ const reiniciar = () => {
 }
 
 onUnmounted(() => {
+  detenerKaraoke()
   guardarProgreso()
   window.speechSynthesis.cancel()
   const estilos = document.getElementById('estilos-libro')
