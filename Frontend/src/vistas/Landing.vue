@@ -57,7 +57,10 @@
       </div>
     </section>
 
-    <p class="pie-landing">Plataforma de apoyo complementaria</p>
+    <p class="pie-landing">
+      Plataforma de apoyo complementaria ·
+      <router-link to="/aviso-privacidad" class="enlace-privacidad">Aviso de privacidad</router-link>
+    </p>
   </div>
 </template>
 
@@ -206,6 +209,10 @@ import imagenLector from '@/assets/lector.jpg';
   line-height: 1.4;
 }
 
+.enlace-privacidad {
+  color: var(--color-primario);
+  text-decoration: underline;
+}
 .pie-landing {
   text-align: center;
   color: var(--color-texto-secundario);

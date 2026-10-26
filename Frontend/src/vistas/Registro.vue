@@ -46,7 +46,10 @@
 
         <label class="campo-checkbox">
           <input type="checkbox" v-model="formulario.avisoPrivacidadAceptado" required />
-          Acepto el aviso de privacidad
+          <span>
+            Acepto el
+            <router-link to="/aviso-privacidad?desde=registro" target="_blank">aviso de privacidad</router-link>
+          </span>
         </label>
 
         <p v-if="mensajeError" class="mensaje-error">{{ mensajeError }}</p>

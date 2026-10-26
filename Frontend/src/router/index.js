@@ -22,12 +22,18 @@ import Cronometro from '../vistas/Cronometro.vue';
 import Tarjetas from '../vistas/Tarjetas.vue';
 import TextoTrivia from '../vistas/TextoTrivia.vue';
 import Lluvia from '../vistas/Lluvia.vue'; // 👈 NUEVO
+import AvisoPrivacidad from '../vistas/AvisoPrivacidad.vue';
 
 const rutas = [
     {
         path: '/',
         name: 'landing',
         component: Landing, // página pública, sin meta: la ve cualquiera
+    },
+    {
+        path: '/aviso-privacidad',
+        name: 'aviso-privacidad',
+        component: AvisoPrivacidad, // pública: la puede ver cualquiera, con o sin sesión
     },
     {
         path: '/login',
