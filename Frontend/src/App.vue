@@ -48,7 +48,10 @@
           :title="tema === 'oscuro' ? 'Cambiar a tema claro' : 'Cambiar a tema oscuro'"
           :aria-label="tema === 'oscuro' ? 'Cambiar a tema claro' : 'Cambiar a tema oscuro'"
           @click="alternarTema"
-        >{{ tema === 'oscuro' ? '☀️' : '🌙' }}</button>
+        >
+          <Sun v-if="tema === 'oscuro'" :size="20" />
+          <Moon v-else :size="20" />
+        </button>
         <router-link to="/perfil" class="nombre-usuario">👤 {{ authStore.usuario?.nombre }}</router-link>
         <button @click="manejarCerrarSesion" class="btn-secundario">Salir</button>
       </div>
@@ -74,7 +77,10 @@
       :title="tema === 'oscuro' ? 'Cambiar a tema claro' : 'Cambiar a tema oscuro'"
       :aria-label="tema === 'oscuro' ? 'Cambiar a tema claro' : 'Cambiar a tema oscuro'"
       @click="alternarTema"
-    >{{ tema === 'oscuro' ? '☀️' : '🌙' }}</button>
+    >
+          <Sun v-if="tema === 'oscuro'" :size="20" />
+          <Moon v-else :size="20" />
+        </button>
 
     <main :class="{ 'con-nav-fijo': authStore.estaAutenticado }">
       <RouterView />
@@ -92,6 +98,7 @@ import { useAuthStore } from './store/auth.store'
 import { useProgresoStore } from './store/progreso.store'
 import BannerConexion from './componentes/BannerConexion.vue'
 import { useTema } from './composables/useTema'
+import { Sun, Moon } from 'lucide-vue-next'
 
 const { tema, alternarTema } = useTema()
 const router = useRouter()
@@ -200,6 +207,9 @@ function manejarCerrarSesion() {
   font-size: 1.05rem;
   line-height: 1;
   cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 .btn-tema:hover { background: var(--color-suave); }
 .btn-tema-flotante {
