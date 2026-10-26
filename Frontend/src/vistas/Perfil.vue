@@ -5,7 +5,7 @@
     <!-- Información -->
     <div class="tarjeta-perfil">
       <div class="encabezado-tarjeta">
-        <span class="icono-tarjeta">👤</span>
+        <span class="icono-tarjeta"><User :size="24" style="color: var(--color-primario)" /></span>
         <h2>Información</h2>
       </div>
 
@@ -33,7 +33,7 @@
     <!-- Cambiar contraseña -->
     <div class="tarjeta-perfil">
       <div class="encabezado-tarjeta">
-        <span class="icono-tarjeta">🔒</span>
+        <span class="icono-tarjeta"><Lock :size="24" style="color: var(--color-primario)" /></span>
         <h2>Cambiar Contraseña</h2>
       </div>
 
@@ -64,7 +64,7 @@
     <!-- Zona peligrosa -->
     <div class="tarjeta-perfil tarjeta-peligro">
       <div class="encabezado-tarjeta">
-        <span class="icono-tarjeta">🗑</span>
+        <span class="icono-tarjeta"><Trash2 :size="24" style="color: #c0392b" /></span>
         <h2 class="titulo-peligro">Zona Peligrosa</h2>
       </div>
 
@@ -73,7 +73,7 @@
       </button>
 
       <div v-else class="confirmacion-eliminar">
-        <p class="aviso-peligro">⚠️ Esta acción es permanente. Todos tus datos se eliminarán.</p>
+        <p class="aviso-peligro"><TriangleAlert :size="16" class="ico" /> Esta acción es permanente. Todos tus datos se eliminarán.</p>
 
         <div class="campo-info">
           <label>Confirma tu contraseña</label>
@@ -96,6 +96,7 @@
 </template>
 
 <script setup>
+import { User, Lock, Trash2, TriangleAlert } from 'lucide-vue-next'
 import { ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { useAuthStore } from '@/store/auth.store';
@@ -395,5 +396,8 @@ async function manejarEliminarCuenta() {
     flex-direction: column;
     align-items: stretch;
   }
+}
+.ico {
+  vertical-align: -0.2em;
 }
 </style>
