@@ -12,8 +12,7 @@
       <p>
         La aplicación es un proyecto de Trabajo Terminal (TT 2026-B002) de la Escuela Superior de
         Cómputo (ESCOM) del Instituto Politécnico Nacional. La responsable del tratamiento de tus
-        datos personales es Valeria Odette Mac Comish Sánchez, con dirección del M. en C. Iván
-        Eduardo Blanco Almazán. Para cualquier duda puedes escribir a:
+        datos personales es Valeria Odette Mac Comish Sánchez. Para cualquier duda puedes escribir a:
         <strong>{{ CORREO_CONTACTO }}</strong>.
       </p>
 
@@ -97,7 +96,7 @@ import { computed } from 'vue'
 import { useRoute } from 'vue-router'
 
 // Cambia estos dos datos antes de entregar el proyecto
-const CORREO_CONTACTO = 'correo-de-contacto@ejemplo.com'
+const CORREO_CONTACTO = 'lexapp.notificaciones@gmail.com'
 const FECHA_ACTUALIZACION = '26 de octubre de 2026'
 
 // Si venías del registro, "Volver" te regresa ahí; si no, a la página principal
