@@ -4,17 +4,17 @@
 
     <div class="grid-estadisticas">
       <div class="tarjeta-estadistica">
-        <span class="icono-estadistica">📈</span>
+        <span class="icono-estadistica"><TrendingUp :size="28" style="color: var(--color-primario)" /></span>
         <div class="numero-estadistica">{{ progresoStore.puntosTotales }}</div>
         <div class="etiqueta-estadistica">Puntos</div>
       </div>
       <div class="tarjeta-estadistica">
-        <span class="icono-estadistica">🔥</span>
+        <span class="icono-estadistica"><Flame :size="28" style="color: #e8590c" /></span>
         <div class="numero-estadistica">{{ progresoStore.rachaActual }}</div>
         <div class="etiqueta-estadistica">Racha</div>
       </div>
       <div class="tarjeta-estadistica">
-        <span class="icono-estadistica">📅</span>
+        <span class="icono-estadistica"><CalendarDays :size="28" style="color: var(--color-primario)" /></span>
         <div class="numero-estadistica">{{ progresoStore.historial.length }}</div>
         <div class="etiqueta-estadistica">Ejercicios</div>
       </div>
@@ -46,6 +46,7 @@
 </template>
 
 <script setup>
+import { TrendingUp, Flame, CalendarDays } from 'lucide-vue-next'
 import { ref, onMounted } from 'vue';
 import { useProgresoStore } from '@/store/progreso.store';
 

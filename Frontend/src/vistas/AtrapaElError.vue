@@ -15,7 +15,7 @@
 
     <!-- Ya completó los 5 niveles x 5 subniveles -->
     <div v-else-if="ejercicioCompletado && !terminado && !jugarLibre" class="tarjeta-ejercicio tarjeta-resultado-final">
-      <div class="emoji-final">🏆</div>
+      <div class="emoji-final"><Trophy :size="56" style="color: #d99a00" /></div>
       <h2>¡Completaste todo el ejercicio!</h2>
       <p class="nota-avance">Ya pasaste los 5 niveles con sus 5 subniveles cada uno. Puedes seguir practicando libremente.</p>
       <button class="btn-primario" @click="jugarLibre = true">Practicar de todos modos</button>
@@ -76,7 +76,7 @@
 
     <!-- Pantalla final -->
     <div v-else class="tarjeta-ejercicio tarjeta-resultado-final">
-      <div class="emoji-final">{{ rondaFuePerfecta ? '🎉' : '💪' }}</div>
+      <div class="emoji-final"><component :is="rondaFuePerfecta ? PartyPopper : Dumbbell" :size="56" style="color: var(--color-primario)" /></div>
       <h2 v-if="rondaFuePerfecta">¡Ronda perfecta! Subiste de subnivel</h2>
       <h2 v-else>Necesitas las 5 correctas para avanzar</h2>
       <p v-if="!rondaFuePerfecta" class="nota-avance">
@@ -117,6 +117,7 @@
 </template>
 
 <script setup>
+import { Trophy, PartyPopper, Dumbbell } from 'lucide-vue-next'
 import { ref, computed, onMounted } from 'vue';
 import api from '@/servicios/api';
 import { useProgresoStore } from '@/store/progreso.store';

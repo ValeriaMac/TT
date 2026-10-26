@@ -5,7 +5,7 @@
     <div class="grid-categorias">
       <div class="tarjeta-categoria">
         <div class="encabezado-categoria">
-          <span class="icono-categoria">📖</span>
+          <span class="icono-categoria"><BookOpen :size="30" style="color: var(--color-primario)" /></span>
           <div>
             <h3>Comprensión lectora</h3>
             <p>Textos y preguntas</p>
@@ -18,7 +18,7 @@
 
       <div class="tarjeta-categoria">
         <div class="encabezado-categoria">
-          <span class="icono-categoria">⚡</span>
+          <span class="icono-categoria"><Zap :size="30" style="color: var(--color-primario)" /></span>
           <div>
             <h3>Fluidez lectora</h3>
             <p>Velocidad de lectura</p>
@@ -31,7 +31,7 @@
 
       <div class="tarjeta-categoria">
         <div class="encabezado-categoria">
-          <span class="icono-categoria">✏️</span>
+          <span class="icono-categoria"><Pencil :size="30" style="color: var(--color-primario)" /></span>
           <div>
             <h3>Ortografía</h3>
             <p>Escritura correcta</p>
@@ -44,7 +44,7 @@
 
       <div class="tarjeta-categoria">
         <div class="encabezado-categoria">
-          <span class="icono-categoria">👁️</span>
+          <span class="icono-categoria"><Eye :size="30" style="color: var(--color-primario)" /></span>
           <div>
             <h3>Diferenciación</h3>
             <p>Letras similares</p>
@@ -62,6 +62,7 @@
 </template>
 
 <script setup>
+import { BookOpen, Zap, Pencil, Eye } from 'lucide-vue-next'
 </script>
 
 <style scoped>

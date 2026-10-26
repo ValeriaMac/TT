@@ -11,7 +11,7 @@
       />
     </div>
       <div class="texto-bienvenida">
-        <h1>¡Hola, {{ authStore.usuario?.nombre }}! 👋</h1>
+        <h1>¡Hola, {{ authStore.usuario?.nombre }}! <Hand :size="26" class="ico" /></h1>
       </div>
       <div class="puntos-bienvenida">
         <div class="numero-puntos">{{ puntosTotales }}</div>
@@ -23,7 +23,7 @@
     <div class="tarjeta-racha">
       <div class="meta-recompensa">
         <div class="fila-racha">
-          <span class="emoji-racha">🔥</span>
+          <span class="emoji-racha"><Flame :size="30" style="color: #e8590c" /></span>
           <div>
             <div class="numero-racha">{{ rachaActual }}</div>
             <div class="etiqueta-racha">días de racha</div>
@@ -38,13 +38,13 @@
           {{ metaRacha.siguiente.emoji_marcador || '🐾' }} {{ metaRacha.siguiente.nombre }}
         </p>
         <p class="texto-meta" v-else-if="metaRacha">
-          ¡Ya tienes todas las mascotas por racha! 🎉
+          ¡Ya tienes todas las mascotas por racha! <PartyPopper :size="18" class="ico" />
         </p>
       </div>
 
       <div class="meta-recompensa">
         <div class="fila-racha">
-          <span class="emoji-racha">⭐</span>
+          <span class="emoji-racha"><Star :size="30" style="color: #e0a800" /></span>
           <div>
             <div class="numero-racha">{{ puntosTotales }}</div>
             <div class="etiqueta-racha">puntos</div>
@@ -59,7 +59,7 @@
           {{ metaPuntos.siguiente.emoji_marcador || '🎁' }} {{ metaPuntos.siguiente.nombre }}
         </p>
         <p class="texto-meta" v-else-if="metaPuntos">
-          ¡Ya tienes todos los accesorios por puntos! 🎉
+          ¡Ya tienes todos los accesorios por puntos! <PartyPopper :size="18" class="ico" />
         </p>
       </div>
     </div>
@@ -86,7 +86,7 @@
     <div v-if="insigniasRecientes.length > 0" class="seccion-insignias">
       <div class="encabezado-seccion">
         <h2 class="titulo-seccion">Insignias recientes</h2>
-        <router-link to="/insignias" class="enlace-ver-todas">🏆 Ver todas</router-link>
+        <router-link to="/insignias" class="enlace-ver-todas"><Trophy :size="16" class="ico" /> Ver todas</router-link>
       </div>
       <div class="grid-insignias">
         <div v-for="insignia in insigniasRecientes" :key="insignia.id" class="tarjeta-insignia">
@@ -98,11 +98,11 @@
     <!-- Banner de donación -->
     <div class="banner-donacion">
       <div class="fila-donacion">
-        <span class="emoji-donacion">💚</span>
+        <span class="emoji-donacion"><Heart :size="32" style="color: var(--color-primario)" /></span>
         <p>Apoya a Lex</p>
       </div>
       <button class="btn-donar" @click="mostrarModalDonacion = true">
-        💗 Donar
+        <Heart :size="16" class="ico" /> Donar
       </button>
     </div>
 
@@ -111,6 +111,7 @@
 </template>
 
 <script setup>
+import { Hand, Flame, Star, PartyPopper, Trophy, Heart } from 'lucide-vue-next'
 import { ref, computed, onMounted } from 'vue';
 import { useAuthStore } from '@/store/auth.store';
 import { useProgresoStore } from '@/store/progreso.store';
@@ -459,5 +460,8 @@ const modulos = [
   .texto-bienvenida { flex: 1 1 140px; min-width: 0; }
   .texto-bienvenida h1 { font-size: 1.3rem; overflow-wrap: anywhere; }
   .puntos-bienvenida { flex: 1 1 100%; text-align: left; }
+}
+.ico {
+  vertical-align: -0.2em;
 }
 </style>

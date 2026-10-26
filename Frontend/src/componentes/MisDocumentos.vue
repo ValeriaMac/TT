@@ -4,10 +4,10 @@
       <h1>Documentos</h1>
       <div class="botones-encabezado">
         <button class="btn-secundario" @click="inputArchivo.click()">
-          ⬆ Subir EPUB
+          <Upload :size="16" class="ico" /> Subir EPUB
         </button>
         <button class="btn-secundario" @click="router.push('/escritura')">
-          ✎ Crear nuevo
+          <Pencil :size="16" class="ico" /> Crear nuevo
         </button>
       </div>
     </div>
@@ -28,7 +28,7 @@
       <!-- Documentos de texto creados/editados en Escritura -->
       <div v-for="doc in documentosTexto" :key="'texto-' + doc.id" class="tarjeta-documento">
         <div class="encabezado-tarjeta">
-          <div class="icono-documento">✎</div>
+          <div class="icono-documento"><FilePenLine :size="22" style="color: var(--color-primario)" /></div>
           <div class="info-documento">
             <p class="titulo-documento">{{ doc.titulo }}</p>
             <p class="subtitulo-documento">Creado</p>
@@ -40,13 +40,13 @@
 
         <div class="acciones-documento">
           <button class="btn-accion" @click="leerDocumentoTexto(doc.id)">
-            📖 Leer
+            <BookOpen :size="16" class="ico" /> Leer
           </button>
           <button class="btn-accion" @click="editarDocumentoTexto(doc.id)">
-            ✎ Editar
+            <Pencil :size="16" class="ico" /> Editar
           </button>
           <button class="btn-eliminar" @click="eliminarDocumentoTexto(doc.id)">
-            🗑
+            <Trash2 :size="16" class="ico" />
           </button>
         </div>
       </div>
@@ -54,7 +54,7 @@
       <!-- Archivos EPUB subidos -->
       <div v-for="epub in epubsDisponibles" :key="'epub-' + epub.name" class="tarjeta-documento">
         <div class="encabezado-tarjeta">
-          <div class="icono-documento">📄</div>
+          <div class="icono-documento"><FileText :size="22" style="color: var(--color-primario)" /></div>
           <div class="info-documento">
             <p class="titulo-documento">{{ epub.name }}</p>
             <p class="subtitulo-documento">Subido</p>
@@ -66,13 +66,13 @@
 
         <div class="acciones-documento">
           <button class="btn-accion" @click="abrirEpub(epub.name)">
-            📖 Leer
+            <BookOpen :size="16" class="ico" /> Leer
           </button>
           <button class="btn-accion" @click="editarEpub(epub.name)">
-            ✎ Editar
+            <Pencil :size="16" class="ico" /> Editar
           </button>
           <button class="btn-eliminar" @click="eliminarEpub(epub.name)">
-            🗑
+            <Trash2 :size="16" class="ico" />
           </button>
         </div>
       </div>
@@ -80,14 +80,14 @@
 
     <!-- Sin documentos -->
     <div v-else-if="!cargando" class="estado-vacio">
-      <div class="emoji-vacio">📄</div>
+      <div class="emoji-vacio"><FileText :size="56" style="color: var(--color-primario)" /></div>
       <h2>Sin documentos</h2>
       <div class="botones-vacio">
         <button class="btn-primario" @click="router.push('/escritura')">
-          ✎ Crear documento
+          <Pencil :size="16" class="ico" /> Crear documento
         </button>
         <button class="btn-secundario" @click="inputArchivo.click()">
-          ⬆ Subir EPUB
+          <Upload :size="16" class="ico" /> Subir EPUB
         </button>
       </div>
     </div>
@@ -95,6 +95,7 @@
 </template>
 
 <script setup>
+import { FilePenLine, FileText, Upload, Pencil, BookOpen, Trash2 } from 'lucide-vue-next'
 import { ref, onMounted } from 'vue'
 import api from '@/servicios/api'
 import { useRouter } from 'vue-router'
@@ -387,5 +388,8 @@ onMounted(() => {
   display: flex;
   justify-content: center;
   gap: 0.8rem;
+}
+.ico {
+  vertical-align: -0.2em;
 }
 </style>

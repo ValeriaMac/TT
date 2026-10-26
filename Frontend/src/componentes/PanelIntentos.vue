@@ -18,7 +18,7 @@
       </p>
 
       <button v-if="!verSolucion" type="button" class="btn-secundario" @click="verSolucion = true">
-        💡 Ver solución
+        <Lightbulb :size="16" class="ico" /> Ver solución
       </button>
 
       <div v-else class="solucion">
@@ -27,7 +27,7 @@
         <ul class="lista-solucion">
           <li v-for="(item, indice) in solucion" :key="indice">
             <span class="sol-titulo">{{ item.titulo }}</span>
-            <span class="sol-correcta">✔ {{ item.correcta }}</span>
+            <span class="sol-correcta"><Check :size="16" class="ico" /> {{ item.correcta }}</span>
             <span v-if="item.tuRespuesta && item.tuRespuesta !== item.correcta" class="sol-tuya">
               Tu respuesta: {{ item.tuRespuesta }}
             </span>
@@ -43,6 +43,7 @@
 </template>
 
 <script setup>
+import { Lightbulb, Check } from 'lucide-vue-next'
 import { ref } from 'vue';
 
 defineProps({
@@ -122,5 +123,8 @@ function terminarSolucion() {
 .sol-tuya {
   font-size: 0.85rem;
   color: #b3261e;
+}
+.ico {
+  vertical-align: -0.2em;
 }
 </style>
