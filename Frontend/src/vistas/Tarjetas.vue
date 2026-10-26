@@ -54,10 +54,10 @@
       </div>
 
       <div class="botones-decision">
-        <button class="btn-decision btn-izquierda" :disabled="mostrandoResultado" @click="responder('izquierda')">
+        <button class="btn-decision btn-izquierda" :disabled="mostrandoResultado" @click="responder('izquierda'); $event.currentTarget.blur()">
           ← {{ tarjetaActual?.letraIzquierda }}
         </button>
-        <button class="btn-decision btn-derecha" :disabled="mostrandoResultado" @click="responder('derecha')">
+        <button class="btn-decision btn-derecha" :disabled="mostrandoResultado" @click="responder('derecha'); $event.currentTarget.blur()">
           {{ tarjetaActual?.letraDerecha }} →
         </button>
       </div>
@@ -419,6 +419,11 @@ onUnmounted(() => {
   font-weight: 600;
   font-size: 1rem;
   cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.btn-decision:focus:not(:focus-visible) {
+  outline: none;
 }
 
 .btn-izquierda {
@@ -426,9 +431,14 @@ onUnmounted(() => {
   color: var(--color-primario);
 }
 
-.btn-izquierda:hover:not(:disabled) {
-  background: var(--color-primario);
-  color: white;
+/* El hover solo se aplica con mouse: en celular/tablet se quedaba "pegado"
+   en el botón que se tocó y parecía que la respuesta anterior seguía marcada */
+@media (hover: hover) and (pointer: fine) {
+  .btn-izquierda:hover:not(:disabled),
+  .btn-derecha:hover:not(:disabled) {
+    background: var(--color-primario);
+    color: white;
+  }
 }
 
 .btn-derecha {
@@ -436,10 +446,6 @@ onUnmounted(() => {
   color: var(--color-primario);
 }
 
-.btn-derecha:hover:not(:disabled) {
-  background: var(--color-primario);
-  color: white;
-}
 
 .btn-decision:disabled {
   opacity: 0.6;
