@@ -81,7 +81,7 @@ async function procesarTabla(tabla, carpeta) {
 
 async function main() {
     console.log('Subiendo imágenes placeholder a Cloudinary...');
-    await procesarTabla('mascotas', 'mascotas');
+    await procesarTabla('insignias', 'mascotas');
     await procesarTabla('accesorios', 'accesorios');
     console.log('\nListo. Ya puedes revisar la carpeta "lex" en tu cuenta de Cloudinary.');
     process.exit(0);

@@ -16,7 +16,7 @@ async function revisarRecompensas(usuarioId, contextoEjercicio = null) {
 
         // Primeros pasos (mascotas): se ganan al COMPLETAR cierto nivel del
         // ejercicio (columna condicion_nivel), ya no con la primera ronda
-        const otorgadasPrimerosPasos = await otorgarPorUmbral('mascotas', 'usuario_mascotas', 'mascota_id', usuarioId, {
+        const otorgadasPrimerosPasos = await otorgarPorUmbral('insignias', 'usuario_insignias', 'insignia_id', usuarioId, {
             categoria: 'primeros_pasos',
             columnaCondicion: 'condicion_nivel',
             valorActual: nivelesCompletados,
@@ -50,7 +50,7 @@ async function revisarRecompensas(usuarioId, contextoEjercicio = null) {
         .single();
 
     if (progreso) {
-        const otorgadas = await otorgarPorUmbral('mascotas', 'usuario_mascotas', 'mascota_id', usuarioId, {
+        const otorgadas = await otorgarPorUmbral('insignias', 'usuario_insignias', 'insignia_id', usuarioId, {
             categoria: 'constancia',
             columnaCondicion: 'condicion_racha_dias',
             // racha_maxima: si ya llegó a la meta una vez, no se pierde por faltar un día
@@ -86,7 +86,7 @@ async function revisarRecompensas(usuarioId, contextoEjercicio = null) {
         .select('id', { count: 'exact', head: true })
         .eq('usuario_id', usuarioId);
 
-    const otorgadasLecturaMascota = await otorgarPorUmbral('mascotas', 'usuario_mascotas', 'mascota_id', usuarioId, {
+    const otorgadasLecturaMascota = await otorgarPorUmbral('insignias', 'usuario_insignias', 'insignia_id', usuarioId, {
         categoria: 'lectura',
         columnaCondicion: 'condicion_libros_leidos',
         valorActual: totalLibros || 0,
@@ -144,7 +144,7 @@ async function otorgarPorCondicion(tabla, tablaUsuario, columnaId, usuarioId, fi
     if (yaLoTiene) return null;
 
     await supabase.from(tablaUsuario).insert({ usuario_id: usuarioId, [columnaId]: item.id });
-    return { tipo: tabla === 'mascotas' ? 'mascota' : 'accesorio', ...item };
+    return { tipo: tabla === 'insignias' ? 'mascota' : 'accesorio', ...item };
 }
 
 // Otorga TODAS las recompensas de una categoría cuyo umbral numérico
@@ -173,7 +173,7 @@ async function otorgarPorUmbral(tabla, tablaUsuario, columnaId, usuarioId, { cat
 
         if (!yaLoTiene) {
             await supabase.from(tablaUsuario).insert({ usuario_id: usuarioId, [columnaId]: item.id });
-            otorgadas.push({ tipo: tabla === 'mascotas' ? 'mascota' : 'accesorio', ...item });
+            otorgadas.push({ tipo: tabla === 'insignias' ? 'mascota' : 'accesorio', ...item });
         }
     }
 
@@ -208,7 +208,7 @@ async function buscarSiguienteUmbral(tabla, tablaUsuario, columnaId, usuarioId, 
         previo,
         siguiente: siguiente
             ? {
-                  tipo: tabla === 'mascotas' ? 'mascota' : 'accesorio',
+                  tipo: tabla === 'insignias' ? 'mascota' : 'accesorio',
                   id: siguiente.id,
                   nombre: siguiente.nombre,
                   emoji_marcador: siguiente.emoji_marcador || null,
@@ -230,7 +230,7 @@ async function obtenerSiguientesRecompensas(req, res) {
             .eq('usuario_id', req.usuarioId)
             .single();
 
-        const racha = await buscarSiguienteUmbral('mascotas', 'usuario_mascotas', 'mascota_id', req.usuarioId, {
+        const racha = await buscarSiguienteUmbral('insignias', 'usuario_insignias', 'insignia_id', req.usuarioId, {
             categoria: 'constancia',
             columnaCondicion: 'condicion_racha_dias',
             valorActual: progreso?.racha_maxima || 0,
@@ -281,27 +281,23 @@ async function registrarLibroAbierto(req, res) {
 // tiene el usuario, cuál es su mascota activa y qué accesorios trae puestos
 async function obtenerColeccion(req, res) {
     try {
-        const { data: todasMascotas } = await supabase.from('mascotas').select('*').order('id');
+        const { data: todasMascotas } = await supabase.from('insignias').select('*').order('id');
         const { data: todosAccesorios } = await supabase.from('accesorios').select('*').order('id');
         const { data: mascotasUsuario } = await supabase
-            .from('usuario_mascotas')
-            .select('mascota_id, fecha_obtenida')
+            .from('usuario_insignias')
+            .select('insignia_id, fecha_obtenida, activa')
             .eq('usuario_id', req.usuarioId);
         const { data: accesoriosUsuario } = await supabase
             .from('usuario_accesorios')
             .select('accesorio_id, fecha_obtenida, equipado')
             .eq('usuario_id', req.usuarioId);
-        const { data: usuario } = await supabase
-            .from('usuarios')
-            .select('mascota_activa_id')
-            .eq('id', req.usuarioId)
-            .single();
-
-        const idsMascotasObtenidas = new Map((mascotasUsuario || []).map((m) => [m.mascota_id, m.fecha_obtenida]));
+        const idsMascotasObtenidas = new Map((mascotasUsuario || []).map((m) => [m.insignia_id, m.fecha_obtenida]));
+        // La insignia activa es la que tiene la bandera "activa" en true
+        const filaActiva = (mascotasUsuario || []).find((m) => m.activa);
         const idsAccesoriosObtenidos = new Map((accesoriosUsuario || []).map((a) => [a.accesorio_id, { fecha: a.fecha_obtenida, equipado: a.equipado }]));
 
         res.json({
-            mascotaActivaId: usuario?.mascota_activa_id || null,
+            mascotaActivaId: filaActiva?.insignia_id || null,
             mascotas: (todasMascotas || []).map((m) => ({
                 ...m,
                 obtenida: idsMascotasObtenidas.has(m.id),
@@ -324,7 +320,7 @@ async function obtenerColeccion(req, res) {
 // exitoso. otorgarPorCondicion ya evita duplicados, así que en el
 // login 2, 3, 4... simplemente no hace nada.
 async function otorgarMascotaBienvenida(usuarioId) {
-    const otorgada = await otorgarPorCondicion('mascotas', 'usuario_mascotas', 'mascota_id', usuarioId, {
+    const otorgada = await otorgarPorCondicion('insignias', 'usuario_insignias', 'insignia_id', usuarioId, {
         categoria: 'bienvenida',
     });
 
@@ -332,17 +328,19 @@ async function otorgarMascotaBienvenida(usuarioId) {
     // activa automáticamente (para que el Dashboard nunca se vea
     // vacío). Si ya tenía una elegida, se respeta esa elección.
     if (otorgada) {
-        const { data: usuario } = await supabase
-            .from('usuarios')
-            .select('mascota_activa_id')
-            .eq('id', usuarioId)
-            .single();
+        const { data: yaTieneActiva } = await supabase
+            .from('usuario_insignias')
+            .select('id')
+            .eq('usuario_id', usuarioId)
+            .eq('activa', true)
+            .maybeSingle();
 
-        if (usuario && !usuario.mascota_activa_id) {
+        if (!yaTieneActiva) {
             await supabase
-                .from('usuarios')
-                .update({ mascota_activa_id: otorgada.id })
-                .eq('id', usuarioId);
+                .from('usuario_insignias')
+                .update({ activa: true })
+                .eq('usuario_id', usuarioId)
+                .eq('insignia_id', otorgada.id);
         }
     }
 
@@ -353,11 +351,12 @@ async function otorgarMascotaBienvenida(usuarioId) {
 // en el Dashboard, junto con los accesorios que trae puestos
 async function obtenerMascotaActiva(req, res) {
     try {
-        const { data: usuario } = await supabase
-            .from('usuarios')
-            .select('mascota_activa_id, mascotas:mascota_activa_id(*)')
-            .eq('id', req.usuarioId)
-            .single();
+        const { data: filaActiva } = await supabase
+            .from('usuario_insignias')
+            .select('insignias(*)')
+            .eq('usuario_id', req.usuarioId)
+            .eq('activa', true)
+            .maybeSingle();
 
         const { data: accesoriosEquipados } = await supabase
             .from('usuario_accesorios')
@@ -366,7 +365,7 @@ async function obtenerMascotaActiva(req, res) {
             .eq('equipado', true);
 
         res.json({
-            mascotaActiva: usuario?.mascotas || null,
+            mascotaActiva: filaActiva?.insignias || null,
             accesoriosEquipados: (accesoriosEquipados || []).map((a) => a.accesorios),
         });
     } catch (error) {
@@ -386,20 +385,28 @@ async function elegirMascotaActiva(req, res) {
 
         // Verifica que de verdad sea suya antes de dejarlo elegirla
         const { data: laTiene } = await supabase
-            .from('usuario_mascotas')
+            .from('usuario_insignias')
             .select('id')
             .eq('usuario_id', req.usuarioId)
-            .eq('mascota_id', mascotaId)
+            .eq('insignia_id', mascotaId)
             .maybeSingle();
 
         if (!laTiene) {
             return res.status(403).json({ mensaje: 'Todavía no tienes esa mascota' });
         }
 
+        // Primero se apagan todas y luego se enciende la elegida
+        // (el índice único solo permite UNA activa por usuario)
         await supabase
-            .from('usuarios')
-            .update({ mascota_activa_id: mascotaId })
-            .eq('id', req.usuarioId);
+            .from('usuario_insignias')
+            .update({ activa: false })
+            .eq('usuario_id', req.usuarioId);
+
+        await supabase
+            .from('usuario_insignias')
+            .update({ activa: true })
+            .eq('usuario_id', req.usuarioId)
+            .eq('insignia_id', mascotaId);
 
         res.json({ mensaje: 'Mascota activa actualizada' });
     } catch (error) {

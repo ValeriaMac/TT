@@ -77,7 +77,7 @@ async function main() {
     const rutaAccesorios = process.argv[3] || path.join(raiz, 'accesorios');
 
     console.log('Subiendo imágenes finales a Cloudinary...');
-    await procesar('mascotas', 'mascota_', 'mascotas', rutaMascotas);
+    await procesar('insignias', 'mascota_', 'mascotas', rutaMascotas);
     await procesar('accesorios', 'acc_', 'accesorios', rutaAccesorios);
     console.log('\nListo.');
     process.exit(0);
