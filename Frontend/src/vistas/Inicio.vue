@@ -35,7 +35,7 @@
         <p class="texto-meta" v-if="metaRacha?.siguiente">
           <strong>{{ rachaActual }} / {{ metaRacha.siguiente.umbral }} días</strong>
           para tu siguiente mascota:
-          {{ metaRacha.siguiente.emoji_marcador || '🐾' }} {{ metaRacha.siguiente.nombre }}
+          {{ metaRacha.siguiente.nombre }}
         </p>
         <p class="texto-meta" v-else-if="metaRacha">
           ¡Ya tienes todas las mascotas por racha! <PartyPopper :size="18" class="ico" />
@@ -56,7 +56,7 @@
         <p class="texto-meta" v-if="metaPuntos?.siguiente">
           <strong>{{ puntosTotales }} / {{ metaPuntos.siguiente.umbral }} puntos</strong>
           para tu siguiente accesorio:
-          {{ metaPuntos.siguiente.emoji_marcador || '🎁' }} {{ metaPuntos.siguiente.nombre }}
+          {{ metaPuntos.siguiente.nombre }}
         </p>
         <p class="texto-meta" v-else-if="metaPuntos">
           ¡Ya tienes todos los accesorios por puntos! <PartyPopper :size="18" class="ico" />

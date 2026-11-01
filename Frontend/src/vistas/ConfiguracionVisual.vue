@@ -148,11 +148,11 @@
           </div>
         </section>
 
-        <div class="botones-principales">
+        <!--<div class="botones-principales">
           <button type="button" class="btn-primario" :disabled="guardando" @click="manejarGuardar">
             {{ guardando ? 'Guardando...' : 'Guardar configuración' }}
           </button>
-        </div>
+        </div> -->
 
         <p v-if="mensaje" class="mensaje-exito">{{ mensaje }}</p>
         <p v-if="mensajeError" class="error">{{ mensajeError }}</p>
