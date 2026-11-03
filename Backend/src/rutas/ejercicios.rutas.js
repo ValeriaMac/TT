@@ -11,6 +11,7 @@ const lluvia = require('../controladores/lluvia.controlador');
 // Atrapa el error (CU-EJ-03)
 router.get('/atrapa-error', verificarToken, atrapaError.obtenerPreguntas);
 router.post('/atrapa-error/verificar', verificarToken, atrapaError.verificarRespuesta);
+router.get('/atrapa-error/pista/:preguntaId', verificarToken, atrapaError.obtenerPista);
 
 // Cronómetro (CU-EJ-02)
 router.get('/cronometro', verificarToken, cronometro.obtenerLectura);

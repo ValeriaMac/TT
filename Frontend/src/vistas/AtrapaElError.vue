@@ -215,11 +215,6 @@ async function manejarRespuesta() {
         tuRespuesta: respuestaUsuario.value,
       });
       sonidoError();
-      // A partir del 3er fallo seguido, se prepara el resaltado para
-      // la SIGUIENTE pregunta
-      if (erroresConsecutivos.value >= 3) {
-        palabraAResaltar.value = respuesta.data.palabraIncorrecta;
-      }
     }
   } catch (error) {
     console.error('No se pudo comprobar la respuesta:', error);
@@ -238,6 +233,18 @@ async function siguientePregunta() {
   respuestaUsuario.value = '';
   mostrandoResultado.value = false;
   ultimoResultado.value = null;
+
+  // Con 3 fallos seguidos, en la oración que sigue se resalta la palabra
+  // mal escrita de ESA oración (ayuda visual, RF_24)
+  palabraAResaltar.value = null;
+  if (erroresConsecutivos.value >= 3) {
+    try {
+      const pista = await api.get(`/ejercicios/atrapa-error/pista/${preguntaActual.value.id}`);
+      palabraAResaltar.value = pista.data.palabraIncorrecta;
+    } catch (error) {
+      console.error('No se pudo cargar la pista:', error);
+    }
+  }
 }
 
 async function finalizarRonda() {

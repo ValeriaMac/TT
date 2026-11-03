@@ -91,4 +91,29 @@ async function verificarRespuesta(req, res) {
     }
 }
 
-module.exports = { obtenerPreguntas, verificarRespuesta };
+// GET /api/ejercicios/atrapa-error/pista/:preguntaId (protegida)
+// Devuelve solo la palabra mal escrita de esa oración. El frontend la
+// pide únicamente cuando el usuario lleva 3 fallos seguidos (RF_24).
+async function obtenerPista(req, res) {
+    try {
+        const { preguntaId } = req.params;
+
+        const { data: pregunta, error } = await supabase
+            .from('banco_preguntas')
+            .select('opciones')
+            .eq('id', preguntaId)
+            .single();
+
+        if (error || !pregunta) {
+            return res.status(404).json({ mensaje: 'Pregunta no encontrada' });
+        }
+
+        res.json({ palabraIncorrecta: pregunta.opciones?.palabra_incorrecta || null });
+
+    } catch (error) {
+        console.error('Error al obtener la pista:', error);
+        res.status(500).json({ mensaje: 'Error interno del servidor' });
+    }
+}
+
+module.exports = { obtenerPreguntas, verificarRespuesta, obtenerPista };
