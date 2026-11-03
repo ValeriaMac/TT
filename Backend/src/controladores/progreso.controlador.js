@@ -83,44 +83,12 @@ async function registrarResultado(req, res) {
 
         if (errorInsertar) throw errorInsertar;
 
-        // 2) Se actualiza el resumen general (puntos totales y racha)
-        const { data: progresoActual, error: errorProgreso } = await supabase
-            .from('progreso_general')
-            .select('*')
-            .eq('usuario_id', req.usuarioId)
-            .single();
-
-        if (errorProgreso) throw errorProgreso;
-
-        const hoy = fechaComoTexto(new Date());
-        const ayer = fechaComoTexto(new Date(Date.now() - 24 * 60 * 60 * 1000));
-
-        let nuevaRacha;
-        if (progresoActual.ultima_actividad === hoy) {
-            // Ya había actividad hoy: la racha no cambia
-            nuevaRacha = progresoActual.racha_actual;
-        } else if (progresoActual.ultima_actividad === ayer) {
-            // Practicó ayer y hoy: la racha sigue creciendo
-            nuevaRacha = progresoActual.racha_actual + 1;
-        } else {
-            // Es la primera vez, o dejó pasar uno o más días: la racha reinicia
-            nuevaRacha = 1;
-        }
-
-        const nuevaRachaMaxima = Math.max(progresoActual.racha_maxima, nuevaRacha);
-        const nuevosPuntos = progresoActual.puntos_totales + puntosObtenidos;
-
+        // 2) Se actualiza el resumen general (puntos totales y racha).
+        // La suma y la racha las hace la base de datos en una sola
+        // operación (función sumar_puntos), así no se pierden puntos
+        // cuando llegan varias peticiones al mismo tiempo.
         const { data: progresoActualizado, error: errorActualizar } = await supabase
-            .from('progreso_general')
-            .update({
-                puntos_totales: nuevosPuntos,
-                racha_actual: nuevaRacha,
-                racha_maxima: nuevaRachaMaxima,
-                ultima_actividad: hoy,
-            })
-            .eq('usuario_id', req.usuarioId)
-            .select()
-            .single();
+            .rpc('sumar_puntos', { p_usuario: req.usuarioId, p_puntos: puntosObtenidos });
 
         if (errorActualizar) throw errorActualizar;
 
