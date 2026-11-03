@@ -313,14 +313,28 @@ const cargarLibro = async () => {
     const blob = await respuesta.blob()
     const arrayBuffer = await blob.arrayBuffer()
 
+    // Un EPUB es un archivo ZIP: debe empezar con "PK". Si no,
+    // está dañado y se avisa de inmediato
+    const inicio = new Uint8Array(arrayBuffer.slice(0, 2))
+    if (inicio[0] !== 0x50 || inicio[1] !== 0x4B) {
+      throw new Error('EPUB_DANADO')
+    }
+
     libro = Epub(arrayBuffer)
 
-    const metadata = await libro.loaded.metadata
+    // Si el libro está dañado, epub.js a veces se queda esperando para
+    // siempre; con este límite de tiempo se muestra un mensaje claro
+    const conLimite = (promesa) => Promise.race([
+      promesa,
+      new Promise((_, rechazar) => setTimeout(() => rechazar(new Error('EPUB_DANADO')), 15000))
+    ])
+
+    const metadata = await conLimite(libro.loaded.metadata)
     titulo.value = metadata.title && metadata.title.trim() !== ''
       ? metadata.title
       : props.url.split('/').pop().split('?')[0]
 
-    await libro.ready
+    await conLimite(libro.ready)
 
     const spine = libro.spine
     let htmlCompleto = ''
@@ -351,7 +365,7 @@ const cargarLibro = async () => {
 
   } catch (err) {
     console.log('Error:', err)
-    errorMsg.value = 'Error al cargar el libro: ' + err.message
+    errorMsg.value = 'No se pudo abrir el libro. El archivo puede estar dañado o no ser un EPUB válido.'
     cargando.value = false
   }
 }
