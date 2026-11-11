@@ -40,7 +40,7 @@
         </span>        <span class="vidas">
           <span v-for="n in 4" :key="n">{{ n <= vidas ? '❤️' : '🖤' }}</span>
         </span>
-        <span>Aciertos: {{ aciertos }} / {{ umbralParaAvanzar }}</span>
+        <span>Aciertos: {{ aciertos }}</span>
       </div>
 
       <div class="area-caida" ref="areaCaidaRef">
@@ -357,7 +357,11 @@ function atraparLetra(letra) {
   if (letra.atrapada || letra.fallida || !jugando.value) return;
 
   letra.atrapada = true;
-  const eraObjetivo = letra.caracter === letra.objetivoAlNacer;
+// Cuenta si coincide con la letra que se ve ahora en pantalla
+// o con la que había cuando nació (así no se castiga por el cambio)
+  const eraObjetivo =
+    letra.caracter === objetivoActual.value ||
+    letra.caracter === letra.objetivoAlNacer;
 
   if (eraObjetivo) {
     aciertos.value++;
@@ -425,7 +429,10 @@ function iniciarGameLoop() {
 
       if (letra.top >= ALTURA_AREA) {
         letra.fallida = true;
-        if (letra.caracter === letra.objetivoAlNacer) {
+        if (
+          letra.caracter === objetivoActual.value ||
+          letra.caracter === letra.objetivoAlNacer
+        ) {
           // Se le escapó una letra que sí había que atrapar
           perderVida();
         }
