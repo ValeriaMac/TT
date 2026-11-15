@@ -98,7 +98,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, nextTick } from 'vue';
+import { ref, onMounted, nextTick, watch } from 'vue';
 import axios from 'axios'; // sigue haciendo falta solo para "fetch" del archivo EPUB en sí
 import api from '@/servicios/api';
 import Epub from 'epubjs';
@@ -278,12 +278,32 @@ function escaparHtml(texto) {
     .replace(/>/g, '&gt;');
 }
 
+// Pinta con su color las letras que la persona marcó en Configuración
+// Visual (config.letras_resaltadas). Solo cambia el color y el grosor:
+// el texto sigue siendo el mismo, así que el cursor y el guardado no se afectan.
+function resaltarLetras(segmento) {
+  const mapa = configuracionStore.config?.letras_resaltadas;
+  if (!mapa || Object.keys(mapa).length === 0) return escaparHtml(segmento);
+
+  return segmento
+    .split('')
+    .map((caracter) => {
+      const color = mapa[caracter.toLowerCase()];
+      const seguro = escaparHtml(caracter);
+      // Solo se aceptan colores tipo #RRGGBB, por seguridad
+      return color && /^#[0-9a-fA-F]{3,8}$/.test(color)
+        ? `<span style="color:${color} !important; font-weight:600;">${seguro}</span>`
+        : seguro;
+    })
+    .join('');
+}
+
 // Reconstruye el HTML del editor: el texto normal tal cual, y las
 // palabras marcadas como error envueltas en un <span> con el
 // subrayado ondulado. Se usa solo en momentos puntuales (no en cada
 // tecla), guardando y restaurando el cursor alrededor de la llamada.
 function construirHtmlConErrores() {
-  if (errores.value.length === 0) return escaparHtml(texto.value);
+  if (errores.value.length === 0) return resaltarLetras(texto.value);
 
   let resultado = '';
   let ultimaPosicion = 0;
@@ -294,13 +314,13 @@ function construirHtmlConErrores() {
     const antes = texto.value.slice(ultimaPosicion, error.posicion);
     const palabra = texto.value.slice(error.posicion, error.posicion + error.palabra.length);
 
-    resultado += escaparHtml(antes);
-    resultado += `<span class="palabra-error">${escaparHtml(palabra)}</span>`;
+    resultado += resaltarLetras(antes);
+    resultado += `<span class="palabra-error">${resaltarLetras(palabra)}</span>`;
 
     ultimaPosicion = error.posicion + error.palabra.length;
   });
 
-  resultado += escaparHtml(texto.value.slice(ultimaPosicion));
+  resultado += resaltarLetras(texto.value.slice(ultimaPosicion));
   return resultado;
 }
 
@@ -540,6 +560,13 @@ function ignorarPalabra(error) {
     establecerPosicionCursor(el, posicionCursor);
   });
 }
+
+// Si cambia la plantilla (o las letras resaltadas), se repinta el editor
+watch(
+  () => configuracionStore.config?.letras_resaltadas,
+  () => repintarManteniendoCursor(),
+  { deep: true }
+);
 </script>
 
 <style scoped>
